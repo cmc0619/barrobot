@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Almost There…</h1>
+
+  {% if ideas %}
+    <ul class="drink-grid">
+      {% for idea in ideas %}
+        {% set drink = idea.recipe %}
+        <li class="drink-card">
+          <div class="thumb-wrapper">
+            {% if drink.image %}
+              {% if '://' in drink.image %}
+                <img src="{{ drink.image }}" alt="{{ drink.name }} image">
+              {% else %}
+                <img src="{{ url_for('static', filename='images/' + drink.image) }}" alt="{{ drink.name }} image">
+              {% endif %}
+            {% else %}
+              <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="No image">
+            {% endif %}
+          </div>
+
+          <h3>{{ drink.name }}</h3>
+          <p class="instructions">
+            You’re just one <strong>{{ idea.missing }}</strong> away!
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Looks like you’re already set for every recipe, or you’re missing more than one ingredient for each.</p>
+  {% endif %}
+{% endblock %}
+

@@ -1,0 +1,26 @@
+<!-- Barrobot version 0.005 -->
+{% extends "base.html" %}
+{% block content %}
+  <h1>Menu</h1>
+
+  {% if drinks %}
+    <ul class="drink-grid">
+      {% for drink in drinks %}
+        <li class="drink-card">
+          <a href="{{ url_for('drink_detail', drink_id=drink.id) }}">
+            <div class="thumb-wrapper">
+              <img src="{{ drink.image }}" alt="{{ drink.name }} image">
+            </div>
+          </a>
+          <h3>{{ drink.name }}</h3>
+          <a class="btn pour-btn" href="{{ url_for('make_drink', name=drink.name) }}">
+            Pour
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No drinks can be made with the current setup.</p>
+  {% endif %}
+{% endblock %}
+

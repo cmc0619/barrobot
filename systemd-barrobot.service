@@ -1,0 +1,12 @@
+[Unit]
+Description=Bar Robot Flask Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/barrobot
+ExecStart=/usr/bin/python3 app.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

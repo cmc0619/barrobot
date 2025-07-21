@@ -1,0 +1,21 @@
+<!-- Barrobot version 0.005 -->
+{% extends "base.html" %}
+{% block content %}
+  <article class="drink-detail">
+    <h1>{{ drink.name }}</h1>
+    <img class="detail-img" src="{{ drink.image }}" alt="{{ drink.name }}">
+
+    <h2>Ingredients (scaled)</h2>
+    <ul>
+      {% for ing in drink.ingredients %}
+        <li>{{ ing.qty_oz }} oz — {{ ing.item|capitalize }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Instructions</h2>
+    <p>{{ drink.instructions }}</p>
+
+    <a class="btn" href="{{ url_for('menu') }}">← Back to Menu</a>
+  </article>
+{% endblock %}
+

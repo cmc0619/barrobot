@@ -1,0 +1,7 @@
+recipes.json
+*.pyc
+__pycache__/
+.venv/
+old/
+# Personal secrets
+config.json

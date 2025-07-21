@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Motor Controls</h1>
+
+  <!-- ── Pin map form (unchanged) ───────────────────────────── -->
+  <h2>GPIO Pin Map</h2>
+  <form action="{{ url_for('motor_controls') }}" method="post">
+    <table class="config-table">
+      <thead><tr><th>Signal</th><th>BCM Pin #</th></tr></thead>
+      <tbody>
+        {% for sig in ["DIR", "STEP", "ENABLE", "ACTUATOR"] %}
+          <tr>
+            <td>{{ sig }}</td>
+            <td><input type="number" name="{{ sig }}" value="{{ pins[sig] }}" required></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-actions" style="margin-top:1rem;">
+      <button class="btn" type="submit">Save Pins</button>
+    </div>
+  </form>
+
+  <!-- ── Test rotation ──────────────────────────────────────── -->
+  <h2 style="margin-top:2rem;">Test Rotation</h2>
+  <p>Select a slot and the turret will rotate immediately.</p>
+
+  <select id="slotSelect">
+    <option value="">— choose slot —</option>
+    {% for n in range(1, 13) %}
+      <option value="{{ n }}">{{ n }}</option>
+    {% endfor %}
+  </select>
+  <span id="slotStatus" style="margin-left:0.6rem;color:#555;"></span>
+
+  <script>
+    const sel   = document.getElementById('slotSelect');
+    const stat  = document.getElementById('slotStatus');
+
+    sel.addEventListener('change', async (e) => {
+      const val = e.target.value;
+      if (!val) return;
+      stat.textContent = '⏳ Moving...';
+      try {
+        const res = await fetch(`/api/rotate/${val}`, {method: 'POST'});
+        if (res.ok) {
+          stat.textContent = `✅ At slot ${val}`;
+        } else {
+          const js = await res.json();
+          stat.textContent = `❌ ${js.msg || 'Error'}`;
+        }
+      } catch (err) {
+        stat.textContent = '❌ Network error';
+      }
+    });
+  </script>
+{% endblock %}
+

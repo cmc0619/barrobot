@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title or "Bar Robot" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="toolbar">
+    <a href="{{ url_for('menu') }}">Menu</a>
+    <a href="{{ url_for('suggestions') }}">Suggestions</a>
+    <a href="{{ url_for('suggestions2') }}">Suggestions 2</a>
+    <a href="{{ url_for('configure') }}">Configure Bottles</a>
+    <a href="{{ url_for('motor_controls') }}">Motor Controls</a>
+  </header>
+
+  <main class="container">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}
+        <ul class="flash-list">
+          {% for category, msg in msgs %}
+            <li class="flash {{ category }}">{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Suggestions – What You’re Missing</h1>
+
+  {% if ideas %}
+    <table class="suggest-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Drink</th>
+          <th style="text-align:left;">Missing Ingredient(s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for idea in ideas %}
+          <tr>
+            <td>{{ idea.recipe.name }}</td>
+            <td>{{ idea.missing | join(', ') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>You can already make every recipe in the book—nice!</p>
+  {% endif %}
+{% endblock %}
+
