@@ -117,7 +117,10 @@ def _nearest_multiple(value: float, step: float) -> float:
     Exactly halfway (.75 when step=1.5) rounds **down** to the lower multiple,
     so 2.25 → 1.5, 2.99 → 3.0, 3.76 → 4.5.
     """
-    return math.floor((value / step) + 0.5) * step
+    ratio = value / step
+    lower = math.floor(ratio)
+    frac = ratio - lower
+    return (lower if frac <= 0.5 else lower + 1) * step
 
 def scale_for_slots(recipe: Dict[str, Any], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     shot = cfg.get("shot_size", 1.5)       # 1.5 = one dispense
