@@ -110,9 +110,8 @@ def set_safe_mode(enabled: bool) -> None:
     print(f"[HARDWARE] Safe-mode {'ON' if enabled else 'OFF'}")
 
 
-# Replace your existing rotate_to_slot() function with this:
 def rotate_to_slot(slot: int) -> None:
-    """Shortest-path rotation to the requested turret slot (CW or CCW)."""
+    """Shortest-path rotation with acceleration/deceleration for bottle safety."""
     global _current_slot
 
     if slot == _current_slot:
@@ -138,19 +137,44 @@ def rotate_to_slot(slot: int) -> None:
 
     _ensure_gpio()
 
-    steps = delta * STEPS_PER_SLOT
-    GPIO.output(_pin_map["DIR"], GPIO.HIGH if clockwise else GPIO.LOW)
+    total_steps = delta * STEPS_PER_SLOT
     
-    for _ in range(steps):
-        GPIO.output(_pin_map["STEP"], GPIO.HIGH)
-        time.sleep(STEP_DELAY_SEC)
-        GPIO.output(_pin_map["STEP"], GPIO.LOW)
-        time.sleep(STEP_DELAY_SEC)
+    # Always use ramping - inertia matters for any move with heavy bottles
+    _rotate_with_ramp(clockwise, total_steps)
 
     _current_slot = slot
     direction_str = "CW" if clockwise else "CCW"
     print(f"[HARDWARE] Rotated {direction_str} to slot {slot} ({delta} slots)")
- 
+
+
+def _rotate_with_ramp(clockwise: bool, total_steps: int) -> None:
+    """Rotate with acceleration/deceleration ramp for smooth bottle movement."""
+    
+    # Ramp parameters - very conservative for heavy 1.5L bottles
+    ramp_steps = min(25, total_steps // 2)  # At least 25 steps ramp, or half the move
+    start_delay = STEP_DELAY_SEC * 5.0      # Start 5x slower for heavy bottles
+    cruise_delay = STEP_DELAY_SEC           # Normal speed for cruising
+    
+    GPIO.output(_pin_map["DIR"], GPIO.HIGH if clockwise else GPIO.LOW)
+    
+    for step in range(total_steps):
+        if step < ramp_steps:
+            # Acceleration phase - start slow, speed up
+            progress = step / ramp_steps
+            delay = start_delay - (start_delay - cruise_delay) * progress
+        elif step >= total_steps - ramp_steps:
+            # Deceleration phase - slow down to stop
+            remaining = total_steps - step
+            progress = remaining / ramp_steps
+            delay = start_delay - (start_delay - cruise_delay) * progress
+        else:
+            # Cruise phase - constant speed
+            delay = cruise_delay
+        
+        GPIO.output(_pin_map["STEP"], GPIO.HIGH)
+        time.sleep(delay)
+        GPIO.output(_pin_map["STEP"], GPIO.LOW)
+        time.sleep(delay) 
 def press_actuator(repetitions: int = 1) -> None:
     """Push the valve several times; ≈ 1 oz per press (calibrate as needed)."""
     if SAFE_MODE:
