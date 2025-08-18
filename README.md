@@ -1,4 +1,4 @@
-cat > README.md <<'EOF'
+![BarRobot](barrobot.jpg)
 # BarRobot 🍸🤖
 
 An open-source, 12-bottle cocktail turret that dispenses drinks on demand through a Flask-based web + touch-screen UI.  
