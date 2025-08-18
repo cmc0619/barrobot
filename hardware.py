@@ -42,7 +42,7 @@ STEPS_PER_REV    = 200         # 1.8 ° motor
 MICROSTEP        = 8
 STEPS_PER_SLOT   = int((STEPS_PER_REV * MICROSTEP) / TOTAL_SLOTS)
 
-STEP_DELAY_SEC   = 0.0008      # 800 µs between pulses
+STEP_DELAY_SEC   = 0.0012      # 800 µs between pulses
 PUSH_DURATION_MS = 600         # valve-press time (≈ 1 oz)
 
 # -------------------------------------------------------------------
@@ -58,9 +58,9 @@ _pin_map: Dict[str, int] = {
 # -------------------------------------------------------------------
 # Globals
 # -------------------------------------------------------------------
-SAFE_MODE   = True
+SAFE_MODE   = False
 _current_slot = 0
-_gpio_ready   = False
+_gpio_ready   = True
 
 # -------------------------------------------------------------------
 # Pin-map management
@@ -110,24 +110,37 @@ def set_safe_mode(enabled: bool) -> None:
     print(f"[HARDWARE] Safe-mode {'ON' if enabled else 'OFF'}")
 
 
+# Replace your existing rotate_to_slot() function with this:
 def rotate_to_slot(slot: int) -> None:
-    """Shortest-path CW rotation to the requested turret slot."""
+    """Shortest-path rotation to the requested turret slot (CW or CCW)."""
     global _current_slot
 
     if slot == _current_slot:
         return
 
+    # Calculate both directions
+    cw_delta = (slot - _current_slot) % TOTAL_SLOTS
+    ccw_delta = (_current_slot - slot) % TOTAL_SLOTS
+    
+    # Choose shortest path
+    if cw_delta <= ccw_delta:
+        clockwise = True
+        delta = cw_delta
+    else:
+        clockwise = False
+        delta = ccw_delta
+
     if SAFE_MODE:
-        print(f"[SAFE] Would rotate slot {_current_slot} → {slot}")
+        direction_str = "CW" if clockwise else "CCW"
+        print(f"[SAFE] Would rotate slot {_current_slot} → {slot} ({direction_str}, {delta} slots)")
         _current_slot = slot
         return
 
     _ensure_gpio()
 
-    delta  = (slot - _current_slot) % TOTAL_SLOTS           # CW positive
-    steps  = delta * STEPS_PER_SLOT
-
-    GPIO.output(_pin_map["DIR"], GPIO.HIGH)                 # CW
+    steps = delta * STEPS_PER_SLOT
+    GPIO.output(_pin_map["DIR"], GPIO.HIGH if clockwise else GPIO.LOW)
+    
     for _ in range(steps):
         GPIO.output(_pin_map["STEP"], GPIO.HIGH)
         time.sleep(STEP_DELAY_SEC)
@@ -135,9 +148,9 @@ def rotate_to_slot(slot: int) -> None:
         time.sleep(STEP_DELAY_SEC)
 
     _current_slot = slot
-    print(f"[HARDWARE] Rotated to slot {slot}")
-
-
+    direction_str = "CW" if clockwise else "CCW"
+    print(f"[HARDWARE] Rotated {direction_str} to slot {slot} ({delta} slots)")
+ 
 def press_actuator(repetitions: int = 1) -> None:
     """Push the valve several times; ≈ 1 oz per press (calibrate as needed)."""
     if SAFE_MODE:

@@ -157,7 +157,7 @@ def load_config() -> Dict[str, Any]:
     cfg.setdefault("slots", [None] * 12)
     cfg.setdefault("pantry", [])
     cfg.setdefault("substitutions", {})
-    cfg.setdefault("safe_mode", True)
+    cfg.setdefault("safe_mode", False)
     cfg.setdefault("pins", DEFAULT_PIN_MAP.copy())
     cfg["slots"]         = [_norm(s) for s in cfg["slots"]]
     cfg["pantry"]        = [_norm(p) for p in cfg["pantry"] if _norm(p)]
