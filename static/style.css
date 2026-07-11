@@ -8,11 +8,34 @@ body {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 0.6rem 1rem;
   background: #e7e7e7;
   border-bottom: 1px solid #c3c3c3;
 }
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.flash-list {
+  list-style: none;
+  padding: 0;
+}
+
+.flash {
+  border-left: 0.35rem solid #555;
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.8rem;
+  background: #f2f2f2;
+}
+
+.flash.error { border-color: #a40000; }
+.flash.success { border-color: #237804; }
+.flash.info { border-color: #2459a6; }
 
 .toolbar a {
   font-weight: 600;
@@ -100,6 +123,51 @@ body {
   width: 100%;
 }
 
+.pour-form {
+  width: 100%;
+  margin-top: auto;
+}
+
+.config-table {
+  border-collapse: collapse;
+  width: min(100%, 40rem);
+}
+
+.config-table th,
+.config-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.4rem;
+  text-align: left;
+}
+
+input,
+select,
+button {
+  min-height: 2.5rem;
+  font: inherit;
+}
+
+input,
+select {
+  box-sizing: border-box;
+  padding: 0.35rem;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.status {
+  color: #555;
+}
+
+.secondary {
+  background: #666;
+}
+
 /* ---------- Responsive tweaks ---------- */
 
 @media (hover: hover) {
@@ -107,4 +175,3 @@ body {
     filter: brightness(1.1);
   }
 }
-

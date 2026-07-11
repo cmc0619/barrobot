@@ -7,15 +7,15 @@
     <ul class="drink-grid">
       {% for drink in drinks %}
         <li class="drink-card">
-          <a href="{{ url_for('drink_detail', drink_id=drink.id) }}">
+          <a href="{{ url_for('web.drink_detail', drink_id=drink.id) }}">
             <div class="thumb-wrapper">
               <img src="{{ drink.image }}" alt="{{ drink.name }} image">
             </div>
           </a>
           <h3>{{ drink.name }}</h3>
-          <a class="btn pour-btn" href="{{ url_for('make_drink', name=drink.name) }}">
-            Pour
-          </a>
+          <form class="pour-form" action="{{ url_for('web.make_drink', name=drink.name) }}" method="post">
+            <button class="btn pour-btn" type="submit">Pour</button>
+          </form>
         </li>
       {% endfor %}
     </ul>
@@ -23,4 +23,3 @@
     <p>No drinks can be made with the current setup.</p>
   {% endif %}
 {% endblock %}
-
