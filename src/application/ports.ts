@@ -1,4 +1,4 @@
-import type { Recipe, StateDocument } from "../domain/model.js";
+import type { MotionSettings, Recipe, StateDocument } from "../domain/model.js";
 
 export interface MotionStatus {
   state: "disarmed" | "ready" | "busy" | "fault";
@@ -15,6 +15,7 @@ export interface MotionController {
   setPosition(slot: number): Promise<void>;
   move(slot: number): Promise<void>;
   dispense(pressCount: number, pressDurationMs: number, releaseDurationMs: number): Promise<void>;
+  configure(settings: MotionSettings): Promise<void>;
   stop(): Promise<void>;
 }
 

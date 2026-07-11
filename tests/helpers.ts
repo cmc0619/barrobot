@@ -4,7 +4,7 @@ import type {
   RecipeSource,
   StateRepository,
 } from "../src/application/ports.js";
-import type { Recipe, StateDocument } from "../src/domain/model.js";
+import type { MotionSettings, Recipe, StateDocument } from "../src/domain/model.js";
 
 /** Provides isolated in-memory persistence for application tests. */
 export class MemoryStateRepository implements StateRepository {
@@ -76,6 +76,11 @@ export class FakeMotionController implements MotionController {
     releaseDurationMs: number,
   ): Promise<void> {
     this.calls.push(`dispense:${pressCount}:${pressDurationMs}:${releaseDurationMs}`);
+    return Promise.resolve();
+  }
+
+  public configure(settings: MotionSettings): Promise<void> {
+    this.calls.push(`configure:${settings.rampSteps}`);
     return Promise.resolve();
   }
 

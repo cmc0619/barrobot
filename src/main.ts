@@ -18,6 +18,11 @@ const motion = new MotionSocketClient(
 const service = new BarRobotService(repository, motion, new CocktailDbSource());
 serviceReference.current = service;
 await service.initialize();
+try {
+  await service.configureMotion();
+} catch (error) {
+  console.warn("Motion service unavailable while restoring tuning", error);
+}
 
 const settings = service.snapshot().settings;
 const webRoot = fileURLToPath(new URL("../web", import.meta.url));

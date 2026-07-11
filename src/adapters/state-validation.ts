@@ -10,8 +10,8 @@ import {
 
 /** Validates the persisted v3 state document before it enters the application. */
 export function validateStateDocument(value: unknown): asserts value is StateDocument {
-  if (!isRecord(value) || value.schemaVersion !== 1) {
-    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 1");
+  if (!isRecord(value) || value.schemaVersion !== 2) {
+    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 2");
   }
   validateSettings(value.settings);
   if (
@@ -33,6 +33,7 @@ function validateRecipes(value: unknown[]): asserts value is Recipe[] {
       typeof recipe.id !== "string" ||
       typeof recipe.name !== "string" ||
       (recipe.source !== "seed" && recipe.source !== "cocktaildb" && recipe.source !== "custom") ||
+      (recipe.productProfile !== "cocktail" && recipe.productProfile !== "slushie") ||
       (recipe.imageUrl !== null && typeof recipe.imageUrl !== "string") ||
       typeof recipe.instructions !== "string" ||
       !Array.isArray(recipe.ingredients)
@@ -92,6 +93,7 @@ export function validateSettings(value: unknown): asserts value is Settings {
   }
   if (
     typeof value.cocktailDbApiKey !== "string" ||
+    (value.productProfile !== "cocktail" && value.productProfile !== "slushie") ||
     typeof value.motionSocket !== "string" ||
     typeof value.listenHost !== "string" ||
     typeof value.listenPort !== "number" ||
@@ -100,7 +102,15 @@ export function validateSettings(value: unknown): asserts value is Settings {
     value.listenPort > 65535 ||
     typeof value.maxDoseErrorPercent !== "number" ||
     value.maxDoseErrorPercent < 0 ||
-    value.maxDoseErrorPercent > 100
+    value.maxDoseErrorPercent > 100 ||
+    (value.motionProfile !== "gentle" &&
+      value.motionProfile !== "balanced" &&
+      value.motionProfile !== "quick" &&
+      value.motionProfile !== "custom") ||
+    (value.completionSound !== "off" &&
+      value.completionSound !== "chime" &&
+      value.completionSound !== "fanfare") ||
+    !isMotionSettings(value.motion)
   ) {
     throw new DomainError("INVALID_SETTINGS", "Settings contain invalid values");
   }
@@ -160,4 +170,30 @@ export function validateInventory(value: unknown): asserts value is InventoryIte
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMotionSettings(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const { rampSteps, minimumHalfPeriodUs, maximumHalfPeriodUs, settleMs, holdPosition } = value;
+  return (
+    typeof rampSteps === "number" &&
+    Number.isInteger(rampSteps) &&
+    rampSteps >= 0 &&
+    rampSteps <= 1600 &&
+    typeof minimumHalfPeriodUs === "number" &&
+    Number.isInteger(minimumHalfPeriodUs) &&
+    minimumHalfPeriodUs >= 600 &&
+    minimumHalfPeriodUs <= 20000 &&
+    typeof maximumHalfPeriodUs === "number" &&
+    Number.isInteger(maximumHalfPeriodUs) &&
+    maximumHalfPeriodUs >= minimumHalfPeriodUs &&
+    maximumHalfPeriodUs <= 30000 &&
+    typeof settleMs === "number" &&
+    Number.isInteger(settleMs) &&
+    settleMs >= 0 &&
+    settleMs <= 5000 &&
+    typeof holdPosition === "boolean"
+  );
 }

@@ -1,5 +1,6 @@
 import { createConnection } from "node:net";
 import type { MotionController, MotionStatus } from "../application/ports.js";
+import type { MotionSettings } from "../domain/model.js";
 
 /** Maps stable motion-service error responses to application errors. */
 export class MotionError extends Error {
@@ -59,6 +60,12 @@ export class MotionSocketClient implements MotionController {
     releaseDurationMs: number,
   ): Promise<void> {
     await this.command(`DISPENSE ${pressCount} ${pressDurationMs} ${releaseDurationMs}`);
+  }
+
+  public async configure(settings: MotionSettings): Promise<void> {
+    await this.command(
+      `CONFIGURE ${settings.rampSteps} ${settings.minimumHalfPeriodUs} ${settings.maximumHalfPeriodUs} ${settings.settleMs} ${settings.holdPosition ? 1 : 0}`,
+    );
   }
 
   public async stop(): Promise<void> {

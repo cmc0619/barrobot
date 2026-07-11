@@ -28,13 +28,23 @@ static int movement_steps(const struct motion *instance, int current, int target
 static uint32_t half_period_us(const struct motion *instance, int step, int total_steps);
 static int set_logical_line(struct motion *instance, enum motion_line line, bool active);
 static int sleep_half_period(struct motion *instance, uint64_t *deadline_ns, uint32_t microseconds);
+static bool valid_tuning(
+    int ramp_steps,
+    uint32_t minimum_half_period_us,
+    uint32_t maximum_half_period_us,
+    uint32_t settle_ms
+);
 
 struct motion *motion_create(const struct motion_config *config, const struct motion_backend *backend) {
     if (config == NULL || backend == NULL || backend->set_line == NULL || backend->now_ns == NULL ||
         backend->sleep_until_ns == NULL || config->slot_count < 2 ||
         config->steps_per_revolution < 1 || config->microsteps < 1 || config->ramp_steps < 0 ||
-        config->minimum_half_period_us < 1 ||
-        config->maximum_half_period_us < config->minimum_half_period_us ||
+        !valid_tuning(
+            config->ramp_steps,
+            config->minimum_half_period_us,
+            config->maximum_half_period_us,
+            config->settle_ms
+        ) ||
         config->steps_per_revolution > INT_MAX / config->microsteps) {
         return NULL;
     }
@@ -90,6 +100,39 @@ void motion_set_realtime(struct motion *instance, bool enabled) {
     if (instance != NULL) {
         atomic_store(&instance->realtime, enabled);
     }
+}
+
+enum motion_result motion_configure(
+    struct motion *instance,
+    int ramp_steps,
+    uint32_t minimum_half_period_us,
+    uint32_t maximum_half_period_us,
+    uint32_t settle_ms,
+    bool hold_position
+) {
+    if (instance == NULL || !valid_tuning(
+                                ramp_steps,
+                                minimum_half_period_us,
+                                maximum_half_period_us,
+                                settle_ms
+                            )) {
+        return MOTION_INVALID;
+    }
+    if (pthread_mutex_trylock(&instance->hardware_lock) != 0) {
+        return MOTION_BUSY;
+    }
+    enum motion_result result = MOTION_OK;
+    if (atomic_load(&instance->armed) || atomic_load(&instance->busy)) {
+        result = MOTION_BUSY;
+    } else {
+        instance->config.ramp_steps = ramp_steps;
+        instance->config.minimum_half_period_us = minimum_half_period_us;
+        instance->config.maximum_half_period_us = maximum_half_period_us;
+        instance->config.settle_ms = settle_ms;
+        instance->config.hold_position = hold_position;
+    }
+    pthread_mutex_unlock(&instance->hardware_lock);
+    return result;
 }
 
 enum motion_result motion_set_position(struct motion *instance, int slot) {
@@ -204,7 +247,8 @@ enum motion_result motion_move(struct motion *instance, int slot) {
 
 done:
     if (set_logical_line(instance, MOTION_LINE_STEP, false) != 0 ||
-        set_logical_line(instance, MOTION_LINE_ENABLE, false) != 0) {
+        (!instance->config.hold_position &&
+         set_logical_line(instance, MOTION_LINE_ENABLE, false) != 0)) {
         result = fail_motion(instance, MOTION_GPIO_ERROR);
     }
     atomic_store(&instance->busy, false);
@@ -236,7 +280,16 @@ enum motion_result motion_dispense(
         goto done;
     }
     atomic_store(&instance->stop_requested, false);
+    if (set_logical_line(instance, MOTION_LINE_ENABLE, true) != 0) {
+        result = fail_motion(instance, MOTION_GPIO_ERROR);
+        goto done;
+    }
     uint64_t deadline_ns = instance->backend.now_ns(instance->backend.context);
+    if (press_count > 0 && instance->config.settle_ms > 0 &&
+        sleep_half_period(instance, &deadline_ns, instance->config.settle_ms * 1000U) != 0) {
+        result = fail_motion(instance, MOTION_GPIO_ERROR);
+        goto done;
+    }
     for (int press = 0; press < press_count; press += 1) {
         if (atomic_load(&instance->stop_requested) || !atomic_load(&instance->armed)) {
             result = fail_motion(instance, MOTION_STOPPED);
@@ -252,7 +305,9 @@ enum motion_result motion_dispense(
     }
 
 done:
-    if (set_logical_line(instance, MOTION_LINE_ACTUATOR, false) != 0) {
+    if (set_logical_line(instance, MOTION_LINE_ACTUATOR, false) != 0 ||
+        (!instance->config.hold_position &&
+         set_logical_line(instance, MOTION_LINE_ENABLE, false) != 0)) {
         result = fail_motion(instance, MOTION_GPIO_ERROR);
     }
     atomic_store(&instance->busy, false);
@@ -335,17 +390,28 @@ static uint32_t half_period_us(const struct motion *instance, int step, int tota
     if (ramp == 0) {
         return instance->config.minimum_half_period_us;
     }
+    const int distance_from_edge = step < total_steps - step - 1 ? step : total_steps - step - 1;
+    if (distance_from_edge >= ramp) {
+        return instance->config.minimum_half_period_us;
+    }
+    /* Cubic smoothstep gives zero slope at launch and braking, avoiding a jarring step change. */
+    const uint64_t scale = 10000U;
+    const uint64_t t = ((uint64_t)distance_from_edge * scale) / (uint64_t)ramp;
+    const uint64_t smooth = (3U * t * t) / scale - (2U * t * t * t) / (scale * scale);
     const uint32_t range = instance->config.maximum_half_period_us -
                            instance->config.minimum_half_period_us;
-    if (step < ramp) {
-        return instance->config.maximum_half_period_us - (range * (uint32_t)step) / (uint32_t)ramp;
-    }
-    if (step >= total_steps - ramp) {
-        const int deceleration_step = step - (total_steps - ramp) + 1;
-        return instance->config.minimum_half_period_us +
-               (range * (uint32_t)deceleration_step) / (uint32_t)ramp;
-    }
-    return instance->config.minimum_half_period_us;
+    return instance->config.maximum_half_period_us - (uint32_t)((range * smooth) / scale);
+}
+
+static bool valid_tuning(
+    int ramp_steps,
+    uint32_t minimum_half_period_us,
+    uint32_t maximum_half_period_us,
+    uint32_t settle_ms
+) {
+    return ramp_steps >= 0 && ramp_steps <= 1600 && minimum_half_period_us >= 600 &&
+           minimum_half_period_us <= 20000 && maximum_half_period_us >= minimum_half_period_us &&
+           maximum_half_period_us <= 30000 && settle_ms <= 5000;
 }
 
 static int set_logical_line(struct motion *instance, enum motion_line line, bool active) {

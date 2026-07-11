@@ -71,6 +71,29 @@ export class BarRobotService {
   public async replaceSettings(settings: Settings): Promise<Settings> {
     validateSettings(settings);
     const state = this.requireState();
+    if (settings.productProfile !== state.settings.productProfile) {
+      if (this.activeJobId || state.jobs.some((job) => job.status === "queued")) {
+        throw new DomainError(
+          "PROFILE_BUSY",
+          "Finish or cancel queued work before changing product profile",
+        );
+      }
+      const status = await this.motion.status();
+      if (status.armed || status.state === "busy") {
+        throw new DomainError(
+          "PROFILE_ARMED",
+          "Disarm the machine before changing product profile",
+        );
+      }
+    }
+    const motionChanged = JSON.stringify(settings.motion) !== JSON.stringify(state.settings.motion);
+    if (motionChanged) {
+      const status = await this.motion.status();
+      if (status.armed || status.state === "busy") {
+        throw new DomainError("MOTION_ARMED", "Disarm the machine before changing motion settings");
+      }
+      await this.motion.configure(settings.motion);
+    }
     state.settings = structuredClone(settings);
     await this.persist();
     return structuredClone(state.settings);
@@ -79,6 +102,12 @@ export class BarRobotService {
   /** Explicitly synchronizes the remote catalogue while retaining custom and seed recipes. */
   public async synchronizeRecipes(): Promise<Recipe[]> {
     const state = this.requireState();
+    if (state.settings.productProfile !== "cocktail") {
+      throw new DomainError(
+        "PROFILE_UNAVAILABLE",
+        "CocktailDB is only available in the cocktail profile",
+      );
+    }
     const downloaded = await this.recipeSource.fetchAll(state.settings.cocktailDbApiKey);
     state.recipes = [
       ...state.recipes.filter((recipe) => recipe.source !== "cocktaildb"),
@@ -91,6 +120,11 @@ export class BarRobotService {
   /** Returns motion health without masking an offline daemon as a valid machine state. */
   public status(): Promise<MotionStatus> {
     return this.motion.status();
+  }
+
+  /** Applies stored tuning after a daemon restart; the daemon still rejects this while armed. */
+  public configureMotion(): Promise<void> {
+    return this.motion.configure(this.requireState().settings.motion);
   }
 
   /** Arms the motion daemon after its position has been established. */

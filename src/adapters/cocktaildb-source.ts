@@ -73,6 +73,7 @@ function convertDrink(drink: CocktailDbDrink): Recipe {
   return {
     id: `cocktaildb:${drink.idDrink}`,
     source: "cocktaildb",
+    productProfile: "cocktail",
     name: drink.strDrink.trim(),
     imageUrl: drink.strDrinkThumb?.trim() || null,
     instructions: drink.strInstructions?.trim() || "",

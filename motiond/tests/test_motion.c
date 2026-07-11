@@ -13,7 +13,11 @@ struct fake_gpio {
     int actuator_rising_edges;
     uint64_t now_ns;
     uint64_t last_deadline_ns;
+    uint64_t intervals_us[8];
+    int sleep_count;
 };
+
+static struct motion *new_motion(struct fake_gpio *gpio);
 
 static int fake_set_line(void *context, enum motion_line line, bool high) {
     struct fake_gpio *gpio = context;
@@ -34,9 +38,27 @@ static uint64_t fake_now_ns(void *context) {
 static int fake_sleep_until_ns(void *context, uint64_t deadline_ns) {
     struct fake_gpio *gpio = context;
     assert(deadline_ns >= gpio->last_deadline_ns);
+    if (gpio->sleep_count < (int)(sizeof(gpio->intervals_us) / sizeof(gpio->intervals_us[0]))) {
+        gpio->intervals_us[gpio->sleep_count] = (deadline_ns - gpio->last_deadline_ns) / 1000U;
+    }
+    gpio->sleep_count += 1;
     gpio->last_deadline_ns = deadline_ns;
     gpio->now_ns = deadline_ns;
     return 0;
+}
+
+static void test_s_curve_starts_without_a_speed_jump(void) {
+    struct fake_gpio gpio;
+    memset(&gpio, 0, sizeof(gpio));
+    struct motion *motion = new_motion(&gpio);
+    assert(motion_configure(motion, 100, 900, 5000, 0, true) == MOTION_OK);
+    assert(motion_set_position(motion, 0) == MOTION_OK);
+    assert(motion_arm(motion) == MOTION_OK);
+    assert(motion_move(motion, 1) == MOTION_OK);
+    assert(gpio.intervals_us[0] == 5000);
+    assert(gpio.intervals_us[1] == 5000);
+    assert(gpio.intervals_us[2] >= 4995);
+    motion_destroy(motion);
 }
 
 static struct motion *new_motion(struct fake_gpio *gpio) {
@@ -47,6 +69,8 @@ static struct motion *new_motion(struct fake_gpio *gpio) {
         .ramp_steps = 25,
         .minimum_half_period_us = 1200,
         .maximum_half_period_us = 6000,
+        .settle_ms = 250,
+        .hold_position = true,
         .clockwise_high = true,
         .enable_active_low = true,
         .actuator_active_high = true,
@@ -96,8 +120,23 @@ static void test_tie_moves_clockwise_and_dispenses_exact_count(void) {
     assert(motion_arm(motion) == MOTION_OK);
     assert(motion_move(motion, 6) == MOTION_OK);
     assert(gpio.values[MOTION_LINE_DIRECTION]);
+    assert(!gpio.values[MOTION_LINE_ENABLE]);
     assert(motion_dispense(motion, 3, 600, 200) == MOTION_OK);
     assert(gpio.actuator_rising_edges == 3);
+    assert(!gpio.values[MOTION_LINE_ENABLE]);
+    motion_destroy(motion);
+}
+
+static void test_tuning_requires_disarm_and_preserves_safe_limits(void) {
+    struct fake_gpio gpio;
+    memset(&gpio, 0, sizeof(gpio));
+    struct motion *motion = new_motion(&gpio);
+    assert(motion_configure(motion, 100, 900, 5000, 200, true) == MOTION_OK);
+    assert(motion_set_position(motion, 0) == MOTION_OK);
+    assert(motion_arm(motion) == MOTION_OK);
+    assert(motion_configure(motion, 100, 900, 5000, 200, true) == MOTION_BUSY);
+    assert(motion_disarm(motion) == MOTION_OK);
+    assert(motion_configure(motion, 100, 500, 5000, 200, true) == MOTION_INVALID);
     motion_destroy(motion);
 }
 
@@ -120,8 +159,10 @@ static void test_stop_latches_fault_and_invalidates_position(void) {
 
 int main(void) {
     test_startup_and_arm_require_position();
+    test_s_curve_starts_without_a_speed_jump();
     test_full_revolution_is_exact();
     test_tie_moves_clockwise_and_dispenses_exact_count();
+    test_tuning_requires_disarm_and_preserves_safe_limits();
     test_stop_latches_fault_and_invalidates_position();
     puts("motion tests passed");
     return 0;

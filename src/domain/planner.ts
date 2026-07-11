@@ -8,6 +8,12 @@ export function buildDrinkPlan(
   inventory: readonly InventoryItem[],
   settings: Settings,
 ): DrinkPlan {
+  if (recipe.productProfile !== settings.productProfile) {
+    throw new DomainError(
+      "PRODUCT_PROFILE_MISMATCH",
+      `${recipe.name} belongs to the ${recipe.productProfile} profile`,
+    );
+  }
   const available = buildInventoryIndex(inventory);
   const steps: PlanStep[] = recipe.ingredients.map((ingredient) => {
     const item = available.get(normalizeIngredient(ingredient.name));
@@ -55,18 +61,20 @@ export function buildMenu(
   inventory: readonly InventoryItem[],
   settings: Settings,
 ): MenuRecipe[] {
-  return recipes.map((recipe) => {
-    try {
-      buildDrinkPlan(recipe, inventory, settings);
-      return { recipe, makeable: true, reason: null };
-    } catch (error) {
-      return {
-        recipe,
-        makeable: false,
-        reason: error instanceof Error ? error.message : "Recipe is unavailable",
-      };
-    }
-  });
+  return recipes
+    .filter((recipe) => recipe.productProfile === settings.productProfile)
+    .map((recipe) => {
+      try {
+        buildDrinkPlan(recipe, inventory, settings);
+        return { recipe, makeable: true, reason: null };
+      } catch (error) {
+        return {
+          recipe,
+          makeable: false,
+          reason: error instanceof Error ? error.message : "Recipe is unavailable",
+        };
+      }
+    });
 }
 
 function buildInventoryIndex(inventory: readonly InventoryItem[]): Map<string, InventoryItem> {

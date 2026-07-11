@@ -5,11 +5,21 @@ import type { InventoryItem, Recipe, Settings } from "../src/domain/model.js";
 import { buildDrinkPlan, buildMenu } from "../src/domain/planner.js";
 
 const settings: Settings = {
+  productProfile: "cocktail",
   cocktailDbApiKey: "1",
   motionSocket: "/tmp/motion.sock",
   maxDoseErrorPercent: 20,
   listenHost: "127.0.0.1",
   listenPort: 5000,
+  motionProfile: "gentle",
+  motion: {
+    minimumHalfPeriodUs: 1300,
+    maximumHalfPeriodUs: 7000,
+    rampSteps: 120,
+    settleMs: 280,
+    holdPosition: true,
+  },
+  completionSound: "chime",
 };
 
 const inventory: InventoryItem[] = [
@@ -40,6 +50,7 @@ const inventory: InventoryItem[] = [
 const recipe: Recipe = {
   id: "test",
   source: "custom",
+  productProfile: "cocktail",
   name: "Test drink",
   imageUrl: null,
   instructions: "Mix",

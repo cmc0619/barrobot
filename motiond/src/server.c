@@ -137,6 +137,8 @@ static void default_config(struct server_config *config) {
             .ramp_steps = 25,
             .minimum_half_period_us = 1200,
             .maximum_half_period_us = 6000,
+            .settle_ms = 250,
+            .hold_position = true,
             .clockwise_high = true,
             .enable_active_low = true,
             .actuator_active_high = true,
@@ -269,6 +271,8 @@ static enum motion_result dispatch_command(
     int first;
     int second;
     int third;
+    int fourth;
+    int fifth;
     char extra;
     if (strcmp(line, "ARM") == 0) {
         result = motion_arm(motion);
@@ -287,6 +291,9 @@ static enum motion_result dispatch_command(
                second >= 0 && third >= 0) {
         try_realtime(motion);
         result = motion_dispense(motion, first, (uint32_t)second, (uint32_t)third);
+    } else if (sscanf(line, "CONFIGURE %d %d %d %d %d %c", &first, &second, &third, &fourth, &fifth, &extra) == 5 &&
+               second >= 0 && third >= 0 && fourth >= 0 && (fifth == 0 || fifth == 1)) {
+        result = motion_configure(motion, first, (uint32_t)second, (uint32_t)third, (uint32_t)fourth, fifth == 1);
     }
     format_result(result, response, size);
     return result;

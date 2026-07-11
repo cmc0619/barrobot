@@ -37,6 +37,7 @@ const pantry: InventoryItem = {
 const recipe: Recipe = {
   id: "drink",
   source: "custom",
+  productProfile: "cocktail",
   name: "Queued drink",
   imageUrl: null,
   instructions: "Mix",
@@ -100,5 +101,37 @@ describe("BarRobotService", () => {
     await waitFor(() => service.getJob(job.id).status === "waiting_manual");
     await service.stopMachine();
     assert.equal(service.getJob(job.id).status, "cancelled");
+  });
+
+  it("requires a disarmed, empty machine before switching product profile", async () => {
+    const motion = new FakeMotionController();
+    const service = new BarRobotService(
+      new MemoryStateRepository(stateWithRecipe()),
+      motion,
+      new FakeRecipeSource(),
+    );
+    await service.initialize();
+    const settings = service.snapshot().settings;
+    settings.productProfile = "slushie";
+    await assert.rejects(service.replaceSettings(settings), /Disarm/);
+    await service.disarm();
+    await service.replaceSettings(settings);
+    assert.equal(service.snapshot().settings.productProfile, "slushie");
+  });
+
+  it("sends changed motion tuning to the daemon while disarmed", async () => {
+    const motion = new FakeMotionController();
+    const service = new BarRobotService(
+      new MemoryStateRepository(stateWithRecipe()),
+      motion,
+      new FakeRecipeSource(),
+    );
+    await service.initialize();
+    await service.disarm();
+    const settings = service.snapshot().settings;
+    settings.motion.rampSteps = 180;
+    settings.motionProfile = "custom";
+    await service.replaceSettings(settings);
+    assert.ok(motion.calls.includes("configure:180"));
   });
 });

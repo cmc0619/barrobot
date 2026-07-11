@@ -24,7 +24,7 @@ enum motion_result {
     MOTION_FAULT = 7,
 };
 
-/** Configures turret geometry, polarity, pulse speed, and ramp length. */
+/** Configures turret geometry, polarity, and the operator-tunable motion envelope. */
 struct motion_config {
     int slot_count;
     int steps_per_revolution;
@@ -32,6 +32,8 @@ struct motion_config {
     int ramp_steps;
     uint32_t minimum_half_period_us;
     uint32_t maximum_half_period_us;
+    uint32_t settle_ms;
+    bool hold_position;
     bool clockwise_high;
     bool enable_active_low;
     bool actuator_active_high;
@@ -67,6 +69,16 @@ struct motion_status motion_get_status(const struct motion *instance);
 
 /** Records whether the active worker obtained real-time scheduling. */
 void motion_set_realtime(struct motion *instance, bool enabled);
+
+/** Safely updates the motion envelope while disarmed and idle. */
+enum motion_result motion_configure(
+    struct motion *instance,
+    int ramp_steps,
+    uint32_t minimum_half_period_us,
+    uint32_t maximum_half_period_us,
+    uint32_t settle_ms,
+    bool hold_position
+);
 
 /** Establishes an operator-confirmed zero-based slot while disarmed. */
 enum motion_result motion_set_position(struct motion *instance, int slot);

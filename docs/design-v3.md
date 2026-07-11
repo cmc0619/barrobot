@@ -82,7 +82,11 @@ E-stop, but it is implemented as promptly as the existing hardware permits.
 - Absolute slot boundaries are calculated over all 1,600 microsteps. The four
   indivisible remainder steps are distributed across the 12 slots.
 - Direction uses the shortest slot distance; a six-slot tie is clockwise.
-- Each move uses configurable acceleration and deceleration ramps.
+- Each move uses a symmetric cubic S-curve, with zero slope at launch and
+  braking. This avoids the sharp initial jerk of a linear ramp.
+- The daemon holds motor torque through the configured settle interval and
+  actuator press when requested; disarm, stop, fault, and reset always release
+  it.
 - Pulse deadlines use `clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ...)` so
   syscall and scheduler latency does not accumulate into positional drift.
 - The motion thread attempts `SCHED_FIFO` when allowed. Failure to obtain it is
@@ -102,6 +106,7 @@ ARM
 DISARM
 RESET
 SET_POSITION <zero-based-slot>
+CONFIGURE <ramp-steps> <min-half-period-us> <max-half-period-us> <settle-ms> <hold-0-or-1>
 MOVE <zero-based-slot>
 DISPENSE <press-count> <on-ms> <off-ms>
 STOP
@@ -149,11 +154,21 @@ rename, and directory fsync:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "settings": {
+    "productProfile": "cocktail",
     "cocktailDbApiKey": "1",
     "motionSocket": "/run/barrobot/motion.sock",
-    "maxDoseErrorPercent": 20
+    "maxDoseErrorPercent": 20,
+    "motionProfile": "gentle",
+    "motion": {
+      "minimumHalfPeriodUs": 1300,
+      "maximumHalfPeriodUs": 7000,
+      "rampSteps": 120,
+      "settleMs": 280,
+      "holdPosition": true
+    },
+    "completionSound": "chime"
   },
   "inventory": [],
   "recipes": []
@@ -241,12 +256,15 @@ The touchscreen UI is served from the same origin, and CORS is not enabled.
 The UI is a small, dependency-free responsive application:
 
 - dashboard with motion health, armed state, position, queue, and stop control;
-- makeable-drink menu with search and recipe details;
+- mutually-exclusive Cocktail maker / Slushie maker profile with a matching
+  catalogue and visual theme;
+- makeable product menu with search and recipe details;
 - live job progress and manual-add acknowledgement;
 - inventory editor with slot uniqueness and per-bottle calibration;
 - machine commissioning page for arm/disarm, position establishment, and test
   moves;
-- settings and explicit recipe synchronization.
+- guarded motion profiles, optional completion chime, settings, and explicit
+  CocktailDB synchronization.
 
 It is designed for large touch targets and works without external assets after
 installation.

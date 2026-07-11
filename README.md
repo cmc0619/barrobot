@@ -105,7 +105,7 @@ Open `http://<pi-address>:5000`.
 
 ## First commissioning
 
-1. Leave bottles unloaded.
+1. Leave bottles unloaded and select the **Gentle** motion profile.
 2. Confirm `/dev/gpiochip0` represents the header GPIO and confirm BCM offsets
    20, 21, 16, and 26.
 3. Start both services and confirm the UI reports **disarmed** and **position
@@ -115,29 +115,43 @@ Open `http://<pi-address>:5000`.
 6. Add bottles and measure milliliters delivered by one actuator press for each
    installed bottle.
 7. Enter those calibration values in Inventory.
-8. Test small recipes before normal operation.
+8. Test small recipes before normal operation. Only try Balanced or Quick after
+   the fully loaded turret is repeatable and stable.
 
 ## Configuration
 
 Application state is stored in `/var/lib/barrobot/state.json` using atomic
 replacement. v3 does not read or migrate v1/v2 files.
 
-Motion configuration is explicit in
-`deploy/barrobot-motion.service`, including:
+Mechanical configuration is explicit in `deploy/barrobot-motion.service`,
+including:
 
 - GPIO chip and BCM offsets;
 - slot count;
 - motor steps and microsteps;
-- ramp length;
-- minimum and maximum half-period timing.
+- default ramp length;
+- default minimum and maximum half-period timing.
 
 Changing DM542T microstep switches requires changing the service's
 `--microsteps` argument to match.
 
+The touchscreen Settings page stores and applies a motion profile while the
+machine is disarmed. Gentle, Balanced, and Quick are conservative starting
+points; Custom exposes top speed, launch/brake speed, S-curve distance, settle
+time, and holding torque. The daemon enforces its own timing bounds even if a
+client is compromised. It restores the saved profile after a daemon restart.
+
+The product profile is mutually exclusive: select **Cocktail maker** or
+**Slushie maker** while disarmed and with no work queued. The UI, catalogue,
+and color theme switch together, while the underlying calibrated slot model is
+shared. A later cleaning workflow can be added as a separate maintenance
+profile without mixing it into either product catalogue.
+
 ## Recipes and inventory
 
-The first run includes a small offline catalogue. CocktailDB synchronization is
-an explicit Settings action and is never required at startup.
+The first run includes small offline cocktail and slushie catalogues. CocktailDB
+synchronization is visible only in the Cocktail maker profile, is explicit, and
+is never required at startup.
 
 Each bottle has:
 

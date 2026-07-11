@@ -5,6 +5,32 @@ const state = {
   settings: null,
   activeJob: null,
   pollTimer: null,
+  previousActiveJobId: null,
+  audioContext: null,
+};
+
+const MOTION_PRESETS = {
+  gentle: {
+    minimumHalfPeriodUs: 1300,
+    maximumHalfPeriodUs: 7000,
+    rampSteps: 120,
+    settleMs: 280,
+    holdPosition: true,
+  },
+  balanced: {
+    minimumHalfPeriodUs: 900,
+    maximumHalfPeriodUs: 5500,
+    rampSteps: 100,
+    settleMs: 200,
+    holdPosition: true,
+  },
+  quick: {
+    minimumHalfPeriodUs: 700,
+    maximumHalfPeriodUs: 4500,
+    rampSteps: 90,
+    settleMs: 160,
+    holdPosition: true,
+  },
 };
 
 const elements = Object.fromEntries(
@@ -27,6 +53,10 @@ const elements = Object.fromEntries(
     "menu-search",
     "inventory-list",
     "settings-form",
+    "console-title",
+    "menu-tab",
+    "menu-heading",
+    "active-job-label",
     "toast",
   ].map((id) => [id, document.getElementById(id)]),
 );
@@ -67,6 +97,10 @@ document.getElementById("add-pantry").addEventListener("click", () => addInvento
 document.getElementById("save-inventory").addEventListener("click", saveInventory);
 document.getElementById("sync-recipes").addEventListener("click", syncRecipes);
 elements["settings-form"].addEventListener("submit", saveSettings);
+elements["settings-form"].elements
+  .namedItem("motionProfile")
+  .addEventListener("change", applyMotionPreset);
+document.addEventListener("pointerdown", unlockAudio, { once: true });
 
 await refreshAll();
 state.pollTimer = window.setInterval(refreshStatus, 1_500);
@@ -81,7 +115,9 @@ async function refreshAll() {
 async function refreshStatus() {
   try {
     state.status = await api("/api/status");
+    if (state.previousActiveJobId && !state.status.activeJob) playCompletionSound();
     state.activeJob = state.status.activeJob;
+    state.previousActiveJobId = state.activeJob?.id ?? null;
     renderStatus();
     renderJob();
   } catch (error) {
@@ -103,9 +139,27 @@ async function refreshInventory() {
 async function refreshSettings() {
   state.settings = await api("/api/settings");
   for (const [key, value] of Object.entries(state.settings)) {
+    if (key === "motion") continue;
     const field = elements["settings-form"].elements.namedItem(key);
     if (field) field.value = value;
   }
+  for (const [key, value] of Object.entries(state.settings.motion)) {
+    const field = elements["settings-form"].elements.namedItem(key);
+    if (!field) continue;
+    if (field.type === "checkbox") field.checked = value;
+    else field.value = value;
+  }
+  renderProductProfile();
+}
+
+function renderProductProfile() {
+  const slushie = state.settings?.productProfile === "slushie";
+  document.body.dataset.profile = slushie ? "slushie" : "cocktail";
+  elements["console-title"].textContent = slushie ? "Slushie console" : "Cocktail console";
+  elements["menu-tab"].textContent = slushie ? "Slushies" : "Cocktails";
+  elements["menu-heading"].textContent = slushie ? "Choose a slushie" : "Choose a cocktail";
+  elements["active-job-label"].textContent = slushie ? "ACTIVE SLUSHIE" : "ACTIVE COCKTAIL";
+  document.getElementById("sync-recipes").classList.toggle("hidden", slushie);
 }
 
 function renderStatus() {
@@ -136,7 +190,7 @@ function renderMenu() {
             <p>${ingredients}</p>
             ${makeable ? "" : `<p>${escapeHtml(reason ?? "Unavailable")}</p>`}
             <button class="button" data-recipe-id="${escapeAttribute(recipe.id)}" ${makeable ? "" : "disabled"}>
-              ${makeable ? "Make drink" : "Unavailable"}
+              ${makeable ? (state.settings?.productProfile === "slushie" ? "Make slushie" : "Make cocktail") : "Unavailable"}
             </button>
           </div>
         </article>`;
@@ -254,15 +308,37 @@ async function saveSettings(event) {
   event.preventDefault();
   const form = new FormData(elements["settings-form"]);
   const settings = {
+    productProfile: String(form.get("productProfile") ?? "cocktail"),
     cocktailDbApiKey: String(form.get("cocktailDbApiKey") ?? "1"),
     motionSocket: String(form.get("motionSocket") ?? ""),
     maxDoseErrorPercent: Number(form.get("maxDoseErrorPercent")),
     listenHost: String(form.get("listenHost") ?? "127.0.0.1"),
     listenPort: Number(form.get("listenPort")),
+    motionProfile: String(form.get("motionProfile") ?? "gentle"),
+    motion: {
+      minimumHalfPeriodUs: Number(form.get("minimumHalfPeriodUs")),
+      maximumHalfPeriodUs: Number(form.get("maximumHalfPeriodUs")),
+      rampSteps: Number(form.get("rampSteps")),
+      settleMs: Number(form.get("settleMs")),
+      holdPosition: form.get("holdPosition") === "on",
+    },
+    completionSound: String(form.get("completionSound") ?? "off"),
   };
   state.settings = await api("/api/settings", { method: "PUT", body: settings });
+  renderProductProfile();
   toast("Settings saved");
   await refreshMenu();
+}
+
+function applyMotionPreset() {
+  const profile = elements["settings-form"].elements.namedItem("motionProfile").value;
+  const preset = MOTION_PRESETS[profile];
+  if (!preset) return;
+  for (const [key, value] of Object.entries(preset)) {
+    const field = elements["settings-form"].elements.namedItem(key);
+    if (field.type === "checkbox") field.checked = value;
+    else field.value = value;
+  }
 }
 
 async function syncRecipes() {
@@ -290,6 +366,31 @@ async function cancelJob() {
   if (!state.activeJob) return;
   await api(`/api/jobs/${encodeURIComponent(state.activeJob.id)}/cancel`, { method: "POST" });
   await refreshStatus();
+}
+
+function unlockAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  state.audioContext = new AudioContext();
+  void state.audioContext.resume();
+}
+
+function playCompletionSound() {
+  if (!state.audioContext || !state.settings || state.settings.completionSound === "off") return;
+  const notes =
+    state.settings.completionSound === "fanfare" ? [523.25, 659.25, 783.99] : [659.25, 783.99];
+  const start = state.audioContext.currentTime;
+  for (const [index, frequency] of notes.entries()) {
+    const oscillator = state.audioContext.createOscillator();
+    const gain = state.audioContext.createGain();
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, start + index * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.12, start + index * 0.12 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.12 + 0.22);
+    oscillator.connect(gain).connect(state.audioContext.destination);
+    oscillator.start(start + index * 0.12);
+    oscillator.stop(start + index * 0.12 + 0.23);
+  }
 }
 
 async function action(path, body) {

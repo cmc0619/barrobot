@@ -1,6 +1,17 @@
 export const SLOT_COUNT = 12;
 
 export type InventoryMode = "bottle" | "pantry";
+export type ProductProfile = "cocktail" | "slushie";
+export type MotionProfileId = "gentle" | "balanced" | "quick" | "custom";
+export type CompletionSound = "off" | "chime" | "fanfare";
+
+export interface MotionSettings {
+  minimumHalfPeriodUs: number;
+  maximumHalfPeriodUs: number;
+  rampSteps: number;
+  settleMs: number;
+  holdPosition: boolean;
+}
 
 export interface InventoryItem {
   id: string;
@@ -24,6 +35,7 @@ export interface RecipeIngredient {
 export interface Recipe {
   id: string;
   source: "seed" | "cocktaildb" | "custom";
+  productProfile: ProductProfile;
   name: string;
   imageUrl: string | null;
   instructions: string;
@@ -31,11 +43,15 @@ export interface Recipe {
 }
 
 export interface Settings {
+  productProfile: ProductProfile;
   cocktailDbApiKey: string;
   motionSocket: string;
   maxDoseErrorPercent: number;
   listenHost: string;
   listenPort: number;
+  motionProfile: MotionProfileId;
+  motion: MotionSettings;
+  completionSound: CompletionSound;
 }
 
 export interface AutomaticPlanStep {
@@ -79,7 +95,7 @@ export interface Job {
 }
 
 export interface StateDocument {
-  schemaVersion: 1;
+  schemaVersion: 2;
   settings: Settings;
   inventory: InventoryItem[];
   recipes: Recipe[];
