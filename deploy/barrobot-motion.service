@@ -1,0 +1,30 @@
+[Unit]
+Description=BarRobot GPIO motion service
+After=local-fs.target
+Before=barrobot.service
+
+[Service]
+Type=simple
+User=barrobot
+Group=barrobot
+SupplementaryGroups=gpio
+RuntimeDirectory=barrobot
+RuntimeDirectoryMode=0750
+UMask=0007
+ExecStart=/opt/barrobot/bin/barrobot-motiond --socket /run/barrobot/motion.sock --chip /dev/gpiochip0 --dir 20 --step 21 --enable 16 --actuator 26 --slots 12 --steps 200 --microsteps 8 --ramp-steps 25 --min-half-period-us 1200 --max-half-period-us 6000
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+DevicePolicy=closed
+DeviceAllow=/dev/gpiochip0 rw
+AmbientCapabilities=CAP_SYS_NICE
+CapabilityBoundingSet=CAP_SYS_NICE
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target
