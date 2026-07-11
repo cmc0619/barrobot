@@ -2,7 +2,12 @@ recipes.json
 *.pyc
 __pycache__/
 .venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 old/
 # Personal secrets
 config.json
+.env
 backups/

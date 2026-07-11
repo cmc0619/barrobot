@@ -13,10 +13,10 @@
               {% if '://' in drink.image %}
                 <img src="{{ drink.image }}" alt="{{ drink.name }} image">
               {% else %}
-                <img src="{{ url_for('static', filename='images/' + drink.image) }}" alt="{{ drink.name }} image">
+                <img src="{{ url_for('static', filename=drink.image) }}" alt="{{ drink.name }} image">
               {% endif %}
             {% else %}
-              <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="No image">
+              <img src="{{ url_for('static', filename='placeholder.png') }}" alt="No image">
             {% endif %}
           </div>
 
@@ -31,4 +31,3 @@
     <p>Looks like you’re already set for every recipe, or you’re missing more than one ingredient for each.</p>
   {% endif %}
 {% endblock %}
-

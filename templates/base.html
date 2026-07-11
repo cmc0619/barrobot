@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title or "Bar Robot" }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="toolbar">
-    <a href="{{ url_for('menu') }}">Menu</a>
-    <a href="{{ url_for('suggestions') }}">Suggestions</a>
-    <a href="{{ url_for('suggestions2') }}">Suggestions 2</a>
-    <a href="{{ url_for('configure') }}">Configure Bottles</a>
-    <a href="{{ url_for('motor_controls') }}">Motor Controls</a>
+    <a href="{{ url_for('web.menu') }}">Menu</a>
+    <a href="{{ url_for('web.suggestions') }}">Suggestions</a>
+    <a href="{{ url_for('web.suggestions2') }}">Suggestions 2</a>
+    <a href="{{ url_for('web.configure') }}">Configure Bottles</a>
+    <a href="{{ url_for('web.motor_controls') }}">Motor Controls</a>
   </header>
 
   <main class="container">
@@ -29,4 +30,3 @@
   </main>
 </body>
 </html>
-
