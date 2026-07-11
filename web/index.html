@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10151d" />
+    <title>BarRobot</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BARROBOT V3</p>
+        <h1>Drink console</h1>
+      </div>
+      <div id="machine-pill" class="machine-pill offline">Motion offline</div>
+    </header>
+
+    <nav class="tabs" aria-label="Primary navigation">
+      <button class="tab active" data-view="dashboard">Machine</button>
+      <button class="tab" data-view="menu">Drinks</button>
+      <button class="tab" data-view="inventory">Inventory</button>
+      <button class="tab" data-view="settings">Settings</button>
+    </nav>
+
+    <main>
+      <section id="view-dashboard" class="view active">
+        <div class="status-grid">
+          <article class="panel status-card">
+            <span>State</span>
+            <strong id="motion-state">Offline</strong>
+          </article>
+          <article class="panel status-card">
+            <span>Position</span>
+            <strong id="motion-position">Unknown</strong>
+          </article>
+          <article class="panel status-card">
+            <span>Timing</span>
+            <strong id="motion-realtime">Unknown</strong>
+          </article>
+          <article class="panel status-card">
+            <span>Queue</span>
+            <strong id="queue-count">0</strong>
+          </article>
+        </div>
+
+        <article class="panel machine-controls">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">COMMISSIONING</p>
+              <h2>Machine control</h2>
+            </div>
+            <button id="stop-button" class="button danger jumbo">STOP</button>
+          </div>
+          <p class="muted">
+            Align the turret physically, establish its slot while disarmed, then arm it.
+          </p>
+          <div class="control-row">
+            <label>
+              Physical position
+              <select id="position-select"></select>
+            </label>
+            <button id="position-button" class="button secondary">Establish position</button>
+          </div>
+          <div class="control-row">
+            <button id="arm-button" class="button success">Arm</button>
+            <button id="disarm-button" class="button secondary">Disarm</button>
+            <button id="reset-button" class="button secondary">Reset fault</button>
+          </div>
+          <div class="control-row">
+            <label>
+              Test destination
+              <select id="move-select"></select>
+            </label>
+            <button id="move-button" class="button">Test move</button>
+          </div>
+        </article>
+
+        <article id="job-panel" class="panel job-panel hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">ACTIVE DRINK</p>
+              <h2 id="job-title">Drink</h2>
+            </div>
+            <span id="job-status" class="badge">Queued</span>
+          </div>
+          <div class="progress-track"><div id="job-progress" class="progress-fill"></div></div>
+          <p id="job-instruction" class="job-instruction"></p>
+          <div class="control-row">
+            <button id="continue-button" class="button success hidden">Manual step complete</button>
+            <button id="cancel-button" class="button secondary">Cancel drink</button>
+          </div>
+        </article>
+      </section>
+
+      <section id="view-menu" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">CATALOGUE</p>
+            <h2>Choose a drink</h2>
+          </div>
+          <input id="menu-search" type="search" placeholder="Search drinks" />
+        </div>
+        <div id="drink-grid" class="drink-grid"></div>
+      </section>
+
+      <section id="view-inventory" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">CALIBRATED INPUTS</p>
+            <h2>Inventory</h2>
+          </div>
+          <div class="control-row compact">
+            <button id="add-bottle" class="button">Add bottle</button>
+            <button id="add-pantry" class="button secondary">Add pantry item</button>
+            <button id="save-inventory" class="button success">Save</button>
+          </div>
+        </div>
+        <p class="muted">
+          Each bottle needs a unique slot and measured milliliters per actuator press.
+        </p>
+        <div id="inventory-list" class="inventory-list"></div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <article class="panel settings-panel">
+          <p class="eyebrow">APPLICATION</p>
+          <h2>Settings</h2>
+          <form id="settings-form" class="settings-form">
+            <label>
+              CocktailDB API key
+              <input name="cocktailDbApiKey" autocomplete="off" />
+            </label>
+            <label>
+              Motion socket
+              <input name="motionSocket" />
+            </label>
+            <label>
+              Maximum dose error (%)
+              <input name="maxDoseErrorPercent" type="number" min="0" max="100" step="1" />
+            </label>
+            <label>
+              Listen host
+              <input name="listenHost" />
+            </label>
+            <label>
+              Listen port
+              <input name="listenPort" type="number" min="1" max="65535" />
+            </label>
+            <div class="control-row">
+              <button class="button success" type="submit">Save settings</button>
+              <button id="sync-recipes" class="button secondary" type="button">
+                Sync CocktailDB
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </body>
+</html>
