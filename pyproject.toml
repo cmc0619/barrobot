@@ -17,6 +17,9 @@ dev = [
 ]
 rpi = ["RPi.GPIO>=0.7.1"]
 
+[tool.setuptools]
+packages = ["barrobot"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
