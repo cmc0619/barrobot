@@ -88,7 +88,7 @@ const SLUSHIE_RECIPES: Recipe[] = [
 /** Creates the complete initial state for a new v3 installation. */
 export function createDefaultState(): StateDocument {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     settings: {
       productProfile: "cocktail",
       cocktailDbApiKey: "1",

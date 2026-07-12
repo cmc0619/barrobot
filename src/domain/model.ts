@@ -23,6 +23,7 @@ export interface InventoryItem {
   enabled: boolean;
   slot: number | null;
   mlPerPress: number | null;
+  estimatedFillPercent: number | null;
   pressDurationMs: number;
   releaseDurationMs: number;
 }
@@ -101,7 +102,7 @@ export interface Job {
 }
 
 export interface StateDocument {
-  schemaVersion: 3;
+  schemaVersion: 4;
   settings: Settings;
   inventoryProfiles: Record<ProductProfile, InventoryItem[]>;
   recipes: Recipe[];

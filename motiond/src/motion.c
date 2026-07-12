@@ -26,7 +26,12 @@ static enum motion_result fail_motion(struct motion *instance, enum motion_resul
 static bool valid_slot(const struct motion *instance, int slot);
 static int boundary_step(const struct motion *instance, int slot);
 static int movement_steps(const struct motion *instance, int current, int target, bool clockwise);
-static uint32_t half_period_us(const struct motion *instance, int step, int total_steps);
+static uint32_t half_period_us(
+    const struct motion *instance,
+    int step,
+    int total_steps,
+    uint32_t timing_percent
+);
 static int set_logical_line(struct motion *instance, enum motion_line line, bool active);
 static int sleep_half_period(struct motion *instance, uint64_t *deadline_ns, uint32_t microseconds);
 static bool valid_tuning(
@@ -238,7 +243,16 @@ enum motion_result motion_end_job(struct motion *instance) {
 }
 
 enum motion_result motion_move(struct motion *instance, int slot) {
-    if (instance == NULL || !valid_slot(instance, slot)) {
+    return motion_move_scaled(instance, slot, 100);
+}
+
+enum motion_result motion_move_scaled(
+    struct motion *instance,
+    int slot,
+    uint32_t timing_percent
+) {
+    if (instance == NULL || !valid_slot(instance, slot) || timing_percent < 100 ||
+        timing_percent > 200) {
         return MOTION_INVALID;
     }
     if (pthread_mutex_trylock(&instance->hardware_lock) != 0) {
@@ -280,7 +294,7 @@ enum motion_result motion_move(struct motion *instance, int slot) {
             result = fail_motion(instance, MOTION_STOPPED);
             goto done;
         }
-        const uint32_t period = half_period_us(instance, step, total_steps);
+        const uint32_t period = half_period_us(instance, step, total_steps, timing_percent);
         if (set_logical_line(instance, MOTION_LINE_STEP, true) != 0 ||
             sleep_half_period(instance, &deadline_ns, period) != 0 ||
             set_logical_line(instance, MOTION_LINE_STEP, false) != 0 ||
@@ -429,17 +443,22 @@ static int movement_steps(const struct motion *instance, int current, int target
                      : (current_step - target_step + total) % total;
 }
 
-static uint32_t half_period_us(const struct motion *instance, int step, int total_steps) {
+static uint32_t half_period_us(
+    const struct motion *instance,
+    int step,
+    int total_steps,
+    uint32_t timing_percent
+) {
     int ramp = instance->config.ramp_steps;
     if (ramp > total_steps / 2) {
         ramp = total_steps / 2;
     }
     if (ramp == 0) {
-        return instance->config.minimum_half_period_us;
+        return (uint32_t)(((uint64_t)instance->config.minimum_half_period_us * timing_percent) / 100U);
     }
     const int distance_from_edge = step < total_steps - step - 1 ? step : total_steps - step - 1;
     if (distance_from_edge >= ramp) {
-        return instance->config.minimum_half_period_us;
+        return (uint32_t)(((uint64_t)instance->config.minimum_half_period_us * timing_percent) / 100U);
     }
     /* Cubic smoothstep gives zero slope at launch and braking, avoiding a jarring step change. */
     const uint64_t scale = 10000U;
@@ -447,7 +466,9 @@ static uint32_t half_period_us(const struct motion *instance, int step, int tota
     const uint64_t smooth = (3U * t * t) / scale - (2U * t * t * t) / (scale * scale);
     const uint32_t range = instance->config.maximum_half_period_us -
                            instance->config.minimum_half_period_us;
-    return instance->config.maximum_half_period_us - (uint32_t)((range * smooth) / scale);
+    const uint32_t period = instance->config.maximum_half_period_us -
+                            (uint32_t)((range * smooth) / scale);
+    return (uint32_t)(((uint64_t)period * timing_percent) / 100U);
 }
 
 static bool valid_tuning(

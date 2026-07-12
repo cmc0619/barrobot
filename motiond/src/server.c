@@ -288,6 +288,10 @@ static enum motion_result dispatch_command(
         result = motion_stop(motion);
     } else if (sscanf(line, "SET_POSITION %d %c", &first, &extra) == 1) {
         result = motion_set_position(motion, first);
+    } else if (sscanf(line, "MOVE %d %d %c", &first, &second, &extra) == 2 && second >= 100 &&
+               second <= 200) {
+        try_realtime(motion);
+        result = motion_move_scaled(motion, first, (uint32_t)second);
     } else if (sscanf(line, "MOVE %d %c", &first, &extra) == 1) {
         try_realtime(motion);
         result = motion_move(motion, first);

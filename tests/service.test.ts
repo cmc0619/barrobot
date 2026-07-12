@@ -18,6 +18,7 @@ const bottle: InventoryItem = {
   enabled: true,
   slot: 3,
   mlPerPress: 15,
+  estimatedFillPercent: 100,
   pressDurationMs: 600,
   releaseDurationMs: 200,
 };
@@ -30,6 +31,7 @@ const pantry: InventoryItem = {
   enabled: true,
   slot: null,
   mlPerPress: null,
+  estimatedFillPercent: null,
   pressDurationMs: 600,
   releaseDurationMs: 200,
 };
@@ -66,7 +68,7 @@ describe("BarRobotService", () => {
     assert.deepEqual(motion.calls.slice(0, 4), [
       "status",
       "beginJob",
-      "move:3",
+      "move:3:150",
       "dispense:3:600:200",
     ]);
     await service.continueJob(submitted.id);

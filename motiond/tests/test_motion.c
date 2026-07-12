@@ -61,6 +61,25 @@ static void test_s_curve_starts_without_a_speed_jump(void) {
     motion_destroy(motion);
 }
 
+static void test_conservative_timing_scale_slows_a_move(void) {
+    struct fake_gpio baseline_gpio;
+    struct fake_gpio slowed_gpio;
+    memset(&baseline_gpio, 0, sizeof(baseline_gpio));
+    memset(&slowed_gpio, 0, sizeof(slowed_gpio));
+    struct motion *baseline = new_motion(&baseline_gpio);
+    struct motion *slowed = new_motion(&slowed_gpio);
+    assert(motion_set_position(baseline, 0) == MOTION_OK);
+    assert(motion_set_position(slowed, 0) == MOTION_OK);
+    assert(motion_arm(baseline) == MOTION_OK);
+    assert(motion_arm(slowed) == MOTION_OK);
+    assert(motion_move(baseline, 1) == MOTION_OK);
+    assert(motion_move_scaled(slowed, 1, 150) == MOTION_OK);
+    assert(slowed_gpio.intervals_us[0] == baseline_gpio.intervals_us[0] * 3U / 2U);
+    assert(motion_move_scaled(slowed, 2, 99) == MOTION_INVALID);
+    motion_destroy(baseline);
+    motion_destroy(slowed);
+}
+
 static struct motion *new_motion(struct fake_gpio *gpio) {
     const struct motion_config config = {
         .slot_count = 12,
@@ -177,6 +196,7 @@ static void test_stop_latches_fault_and_invalidates_position(void) {
 int main(void) {
     test_startup_and_arm_require_position();
     test_s_curve_starts_without_a_speed_jump();
+    test_conservative_timing_scale_slows_a_move();
     test_full_revolution_is_exact();
     test_tie_moves_clockwise_and_dispenses_exact_count();
     test_job_scope_holds_then_releases_motor();

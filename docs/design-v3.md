@@ -87,6 +87,10 @@ E-stop, but it is implemented as promptly as the existing hardware permits.
 - The daemon holds motor torque through the configured settle interval and
   actuator press only inside an explicit automatic-job scope. The job end,
   disarm, stop, fault, and reset paths always release it.
+- Automatic jobs may apply only a conservative timing multiplier from 100 to
+  200 percent. The application derives 125/150 percent slowdowns from the
+  operator-maintained bottle fill estimates when the turret is lopsided; it
+  never automatically speeds a move up.
 - Pulse deadlines use `clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ...)` so
   syscall and scheduler latency does not accumulate into positional drift.
 - The motion thread attempts `SCHED_FIFO` when allowed. Failure to obtain it is
@@ -110,6 +114,7 @@ CONFIGURE <ramp-steps> <min-half-period-us> <max-half-period-us> <settle-ms> <ho
 BEGIN_JOB
 END_JOB
 MOVE <zero-based-slot>
+MOVE <zero-based-slot> <timing-percent-100-to-200>
 DISPENSE <press-count> <on-ms> <off-ms>
 STOP
 ```
@@ -156,7 +161,7 @@ rename, and directory fsync:
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "settings": {
     "productProfile": "cocktail",
     "cocktailDbApiKey": "1",

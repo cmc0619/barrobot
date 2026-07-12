@@ -10,8 +10,8 @@ import {
 
 /** Validates the persisted v3 state document before it enters the application. */
 export function validateStateDocument(value: unknown): asserts value is StateDocument {
-  if (!isRecord(value) || value.schemaVersion !== 3) {
-    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 3");
+  if (!isRecord(value) || value.schemaVersion !== 4) {
+    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 4");
   }
   validateSettings(value.settings);
   if (
@@ -158,7 +158,10 @@ export function validateInventory(value: unknown): asserts value is InventoryIte
         item.slot < 0 ||
         item.slot >= SLOT_COUNT ||
         typeof item.mlPerPress !== "number" ||
-        item.mlPerPress <= 0
+        item.mlPerPress <= 0 ||
+        typeof item.estimatedFillPercent !== "number" ||
+        item.estimatedFillPercent < 0 ||
+        item.estimatedFillPercent > 100
       ) {
         throw new DomainError("INVALID_INVENTORY", `${item.name} requires a slot and calibration`);
       }
@@ -166,7 +169,11 @@ export function validateInventory(value: unknown): asserts value is InventoryIte
         throw new DomainError("INVALID_INVENTORY", `Bottle slot ${item.slot + 1} is duplicated`);
       }
       slots.add(item.slot);
-    } else if (item.slot !== null || item.mlPerPress !== null) {
+    } else if (
+      item.slot !== null ||
+      item.mlPerPress !== null ||
+      item.estimatedFillPercent !== null
+    ) {
       throw new DomainError("INVALID_INVENTORY", `${item.name} pantry configuration is invalid`);
     }
   }

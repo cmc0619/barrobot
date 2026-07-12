@@ -171,6 +171,10 @@ Cocktails preserve their authored build order. Fully automatic flexible recipes,
 such as a slushie flavour blend, are ordered from the live turret position to
 reduce travel.
 
+Bottle rows include an operator-maintained fill estimate. It is used only to
+slow automatic moves by 25% or 50% when the turret is strongly lopsided; it
+never speeds a move beyond the selected motion profile.
+
 Party mode keeps the touch UI in the menu while orders are queued, and Classic,
 Tropical, and Arcade personalities change the visual treatment and local
 completion tones.

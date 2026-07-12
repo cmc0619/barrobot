@@ -64,8 +64,8 @@ export class FakeMotionController implements MotionController {
     return Promise.resolve();
   }
 
-  public move(slot: number): Promise<void> {
-    this.calls.push(`move:${slot}`);
+  public move(slot: number, timingPercent = 100): Promise<void> {
+    this.calls.push(timingPercent === 100 ? `move:${slot}` : `move:${slot}:${timingPercent}`);
     this.machineStatus.position = slot;
     return Promise.resolve();
   }

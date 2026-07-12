@@ -101,6 +101,13 @@ enum motion_result motion_end_job(struct motion *instance);
 /** Executes one shortest-path ramped move to a zero-based slot. */
 enum motion_result motion_move(struct motion *instance, int slot);
 
+/** Executes a move with a conservative timing scale from 100 through 200 percent. */
+enum motion_result motion_move_scaled(
+    struct motion *instance,
+    int slot,
+    uint32_t timing_percent
+);
+
 /** Executes calibrated actuator presses while the machine is armed. */
 enum motion_result motion_dispense(
     struct motion *instance,

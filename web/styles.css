@@ -353,7 +353,7 @@ main {
 
 .inventory-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.2fr 0.7fr 0.8fr 0.8fr auto;
+  grid-template-columns: 1.4fr 1.2fr 0.7fr 0.8fr 0.8fr 0.8fr auto;
   gap: 0.7rem;
   align-items: end;
   padding: 1rem;

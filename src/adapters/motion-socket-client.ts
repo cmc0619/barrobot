@@ -50,8 +50,8 @@ export class MotionSocketClient implements MotionController {
     await this.command(`SET_POSITION ${slot}`);
   }
 
-  public async move(slot: number): Promise<void> {
-    await this.command(`MOVE ${slot}`);
+  public async move(slot: number, timingPercent = 100): Promise<void> {
+    await this.command(timingPercent === 100 ? `MOVE ${slot}` : `MOVE ${slot} ${timingPercent}`);
   }
 
   public async dispense(

@@ -298,7 +298,7 @@ export class BarRobotService {
             await this.motion.beginJob();
             jobMotorActive = true;
           }
-          await this.motion.move(step.slot);
+          await this.motion.move(step.slot, this.balanceAwareTimingPercent());
           await this.motion.dispense(step.pressCount, step.pressDurationMs, step.releaseDurationMs);
         }
         job.currentStep = index + 1;
@@ -350,6 +350,32 @@ export class BarRobotService {
   private activeInventory(): InventoryItem[] {
     const state = this.requireState();
     return state.inventoryProfiles[state.settings.productProfile];
+  }
+
+  /** Slows automatic work when the operator's fill estimates form a lopsided turret. */
+  private balanceAwareTimingPercent(): number {
+    const bottles = this.activeInventory().filter(
+      (item) =>
+        item.enabled &&
+        item.mode === "bottle" &&
+        item.slot !== null &&
+        item.estimatedFillPercent !== null &&
+        item.estimatedFillPercent > 0,
+    );
+    const total = bottles.reduce((sum, item) => sum + (item.estimatedFillPercent ?? 0), 0);
+    if (total === 0) {
+      return 100;
+    }
+    const vector = bottles.reduce(
+      (result, item) => {
+        const angle = ((item.slot ?? 0) / 12) * Math.PI * 2;
+        const load = item.estimatedFillPercent ?? 0;
+        return { x: result.x + Math.cos(angle) * load, y: result.y + Math.sin(angle) * load };
+      },
+      { x: 0, y: 0 },
+    );
+    const imbalance = Math.hypot(vector.x, vector.y) / total;
+    return imbalance >= 0.65 ? 150 : imbalance >= 0.4 ? 125 : 100;
   }
 
   private persist(): Promise<void> {

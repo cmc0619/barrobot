@@ -240,6 +240,7 @@ function renderInventory() {
         </select></label>
         <label>Slot<input data-field="slot" type="number" min="1" max="12" value="${item.slot === null ? "" : item.slot + 1}" ${item.mode === "pantry" ? "disabled" : ""} /></label>
         <label>ml / press<input data-field="mlPerPress" type="number" min="0.1" step="0.1" value="${item.mlPerPress ?? ""}" ${item.mode === "pantry" ? "disabled" : ""} /></label>
+        <label>Fill estimate (%)<input data-field="estimatedFillPercent" type="number" min="0" max="100" step="1" value="${item.estimatedFillPercent ?? ""}" ${item.mode === "pantry" ? "disabled" : ""} /></label>
         <button class="button danger" data-remove="${escapeAttribute(item.id)}">Remove</button>
       </article>`,
     )
@@ -259,6 +260,7 @@ function toggleInventoryMode(row) {
   const pantry = row.querySelector('[data-field="mode"]').value === "pantry";
   row.querySelector('[data-field="slot"]').disabled = pantry;
   row.querySelector('[data-field="mlPerPress"]').disabled = pantry;
+  row.querySelector('[data-field="estimatedFillPercent"]').disabled = pantry;
 }
 
 function addInventory(mode) {
@@ -270,6 +272,7 @@ function addInventory(mode) {
     enabled: true,
     slot: mode === "bottle" ? firstOpenSlot() : null,
     mlPerPress: mode === "bottle" ? 30 : null,
+    estimatedFillPercent: mode === "bottle" ? 100 : null,
     pressDurationMs: 600,
     releaseDurationMs: 200,
   });
@@ -301,6 +304,10 @@ async function saveInventory() {
         slot: mode === "bottle" ? Number(row.querySelector('[data-field="slot"]').value) - 1 : null,
         mlPerPress:
           mode === "bottle" ? Number(row.querySelector('[data-field="mlPerPress"]').value) : null,
+        estimatedFillPercent:
+          mode === "bottle"
+            ? Number(row.querySelector('[data-field="estimatedFillPercent"]').value)
+            : null,
         pressDurationMs: 600,
         releaseDurationMs: 200,
       };

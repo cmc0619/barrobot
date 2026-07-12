@@ -13,7 +13,7 @@ export interface MotionController {
   disarm(): Promise<void>;
   reset(): Promise<void>;
   setPosition(slot: number): Promise<void>;
-  move(slot: number): Promise<void>;
+  move(slot: number, timingPercent?: number): Promise<void>;
   dispense(pressCount: number, pressDurationMs: number, releaseDurationMs: number): Promise<void>;
   configure(settings: MotionSettings): Promise<void>;
   beginJob(): Promise<void>;
