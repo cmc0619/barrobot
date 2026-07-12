@@ -120,10 +120,27 @@ static void test_tie_moves_clockwise_and_dispenses_exact_count(void) {
     assert(motion_arm(motion) == MOTION_OK);
     assert(motion_move(motion, 6) == MOTION_OK);
     assert(gpio.values[MOTION_LINE_DIRECTION]);
-    assert(!gpio.values[MOTION_LINE_ENABLE]);
+    assert(gpio.values[MOTION_LINE_ENABLE]);
     assert(motion_dispense(motion, 3, 600, 200) == MOTION_OK);
     assert(gpio.actuator_rising_edges == 3);
+    assert(gpio.values[MOTION_LINE_ENABLE]);
+    motion_destroy(motion);
+}
+
+static void test_job_scope_holds_then_releases_motor(void) {
+    struct fake_gpio gpio;
+    memset(&gpio, 0, sizeof(gpio));
+    struct motion *motion = new_motion(&gpio);
+    assert(motion_set_position(motion, 0) == MOTION_OK);
+    assert(motion_arm(motion) == MOTION_OK);
+    assert(motion_begin_job(motion) == MOTION_OK);
     assert(!gpio.values[MOTION_LINE_ENABLE]);
+    assert(motion_move(motion, 1) == MOTION_OK);
+    assert(!gpio.values[MOTION_LINE_ENABLE]);
+    assert(motion_dispense(motion, 1, 100, 100) == MOTION_OK);
+    assert(!gpio.values[MOTION_LINE_ENABLE]);
+    assert(motion_end_job(motion) == MOTION_OK);
+    assert(gpio.values[MOTION_LINE_ENABLE]);
     motion_destroy(motion);
 }
 
@@ -162,6 +179,7 @@ int main(void) {
     test_s_curve_starts_without_a_speed_jump();
     test_full_revolution_is_exact();
     test_tie_moves_clockwise_and_dispenses_exact_count();
+    test_job_scope_holds_then_releases_motor();
     test_tuning_requires_disarm_and_preserves_safe_limits();
     test_stop_latches_fault_and_invalidates_position();
     puts("motion tests passed");

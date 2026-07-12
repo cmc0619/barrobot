@@ -67,7 +67,7 @@ export async function buildHttpServer(
     reply.code(200).send(await service.synchronizeRecipes()),
   );
 
-  server.get("/api/inventory", () => service.snapshot().inventory);
+  server.get("/api/inventory", () => service.inventory());
   server.put("/api/inventory", async (request) => {
     validateInventory(request.body);
     return service.replaceInventory(request.body);

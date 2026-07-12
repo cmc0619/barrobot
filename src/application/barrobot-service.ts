@@ -8,7 +8,7 @@ import type {
   Settings,
   StateDocument,
 } from "../domain/model.js";
-import { buildDrinkPlan, buildMenu } from "../domain/planner.js";
+import { buildDrinkPlan, buildMenu, optimizeFlexiblePlan } from "../domain/planner.js";
 import { validateInventory, validateSettings } from "../adapters/state-validation.js";
 import type { MotionController, MotionStatus, RecipeSource, StateRepository } from "./ports.js";
 
@@ -55,16 +55,21 @@ export class BarRobotService {
   /** Returns menu recipes with exact planning availability reasons. */
   public menu(): MenuRecipe[] {
     const state = this.requireState();
-    return buildMenu(state.recipes, state.inventory, state.settings);
+    return buildMenu(state.recipes, this.activeInventory(), state.settings);
+  }
+
+  /** Returns the inventory map belonging to the selected physical machine setup. */
+  public inventory(): InventoryItem[] {
+    return structuredClone(this.activeInventory());
   }
 
   /** Replaces validated inventory as one atomic state update. */
   public async replaceInventory(inventory: InventoryItem[]): Promise<InventoryItem[]> {
     validateInventory(inventory);
     const state = this.requireState();
-    state.inventory = structuredClone(inventory);
+    state.inventoryProfiles[state.settings.productProfile] = structuredClone(inventory);
     await this.persist();
-    return structuredClone(state.inventory);
+    return this.inventory();
   }
 
   /** Replaces validated application settings. */
@@ -166,7 +171,7 @@ export class BarRobotService {
     const job: Job = {
       id: randomUUID(),
       status: "queued",
-      plan: buildDrinkPlan(recipe, state.inventory, state.settings),
+      plan: buildDrinkPlan(recipe, this.activeInventory(), state.settings),
       currentStep: 0,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -254,6 +259,7 @@ export class BarRobotService {
 
   private async runJob(job: Job): Promise<void> {
     this.activeJobId = job.id;
+    let jobMotorActive = false;
     job.status = "running";
     job.updatedAt = this.timestamp();
     await this.persist();
@@ -261,6 +267,10 @@ export class BarRobotService {
       const status = await this.motion.status();
       if (!status.armed || status.position === null || status.state !== "ready") {
         throw new DomainError("MACHINE_NOT_READY", "Machine must be armed and positioned");
+      }
+      if (job.plan.stepOrder === "flexible") {
+        job.plan = optimizeFlexiblePlan(job.plan, status.position);
+        await this.persist();
       }
       for (let index = job.currentStep; index < job.plan.steps.length; index += 1) {
         const step = job.plan.steps[index];
@@ -271,6 +281,10 @@ export class BarRobotService {
           return;
         }
         if (step.kind === "manual") {
+          if (jobMotorActive) {
+            await this.motion.endJob();
+            jobMotorActive = false;
+          }
           job.status = "waiting_manual";
           job.updatedAt = this.timestamp();
           await this.persist();
@@ -280,6 +294,10 @@ export class BarRobotService {
           }
           job.status = "running";
         } else {
+          if (!jobMotorActive) {
+            await this.motion.beginJob();
+            jobMotorActive = true;
+          }
           await this.motion.move(step.slot);
           await this.motion.dispense(step.pressCount, step.pressDurationMs, step.releaseDurationMs);
         }
@@ -298,6 +316,9 @@ export class BarRobotService {
         await this.persist();
       }
     } finally {
+      if (jobMotorActive) {
+        await this.motion.endJob().catch(() => undefined);
+      }
       this.manualWaiters.delete(job.id);
       this.activeJobId = null;
     }
@@ -324,6 +345,11 @@ export class BarRobotService {
       throw new DomainError("NOT_INITIALIZED", "BarRobot service is not initialized");
     }
     return this.state;
+  }
+
+  private activeInventory(): InventoryItem[] {
+    const state = this.requireState();
+    return state.inventoryProfiles[state.settings.productProfile];
   }
 
   private persist(): Promise<void> {

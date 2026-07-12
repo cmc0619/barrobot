@@ -10,18 +10,17 @@ import {
 
 /** Validates the persisted v3 state document before it enters the application. */
 export function validateStateDocument(value: unknown): asserts value is StateDocument {
-  if (!isRecord(value) || value.schemaVersion !== 2) {
-    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 2");
+  if (!isRecord(value) || value.schemaVersion !== 3) {
+    throw new DomainError("INVALID_STATE", "State file is not BarRobot schema version 3");
   }
   validateSettings(value.settings);
   if (
-    !Array.isArray(value.inventory) ||
+    !isInventoryProfiles(value.inventoryProfiles) ||
     !Array.isArray(value.recipes) ||
     !Array.isArray(value.jobs)
   ) {
     throw new DomainError("INVALID_STATE", "State collections must be arrays");
   }
-  validateInventory(value.inventory);
   validateRecipes(value.recipes);
   validateJobs(value.jobs);
 }
@@ -34,6 +33,7 @@ function validateRecipes(value: unknown[]): asserts value is Recipe[] {
       typeof recipe.name !== "string" ||
       (recipe.source !== "seed" && recipe.source !== "cocktaildb" && recipe.source !== "custom") ||
       (recipe.productProfile !== "cocktail" && recipe.productProfile !== "slushie") ||
+      (recipe.stepOrder !== "strict" && recipe.stepOrder !== "flexible") ||
       (recipe.imageUrl !== null && typeof recipe.imageUrl !== "string") ||
       typeof recipe.instructions !== "string" ||
       !Array.isArray(recipe.ingredients)
@@ -110,6 +110,10 @@ export function validateSettings(value: unknown): asserts value is Settings {
     (value.completionSound !== "off" &&
       value.completionSound !== "chime" &&
       value.completionSound !== "fanfare") ||
+    (value.personality !== "classic" &&
+      value.personality !== "tropical" &&
+      value.personality !== "arcade") ||
+    typeof value.partyMode !== "boolean" ||
     !isMotionSettings(value.motion)
   ) {
     throw new DomainError("INVALID_SETTINGS", "Settings contain invalid values");
@@ -196,4 +200,17 @@ function isMotionSettings(value: unknown): boolean {
     settleMs <= 5000 &&
     typeof holdPosition === "boolean"
   );
+}
+
+function isInventoryProfiles(value: unknown): boolean {
+  if (!isRecord(value) || !Array.isArray(value.cocktail) || !Array.isArray(value.slushie)) {
+    return false;
+  }
+  try {
+    validateInventory(value.cocktail);
+    validateInventory(value.slushie);
+    return true;
+  } catch {
+    return false;
+  }
 }

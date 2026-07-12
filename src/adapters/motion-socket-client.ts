@@ -68,6 +68,14 @@ export class MotionSocketClient implements MotionController {
     );
   }
 
+  public async beginJob(): Promise<void> {
+    await this.command("BEGIN_JOB");
+  }
+
+  public async endJob(): Promise<void> {
+    await this.command("END_JOB");
+  }
+
   public async stop(): Promise<void> {
     await this.command("STOP", 2_000);
   }

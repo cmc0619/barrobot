@@ -92,6 +92,12 @@ enum motion_result motion_disarm(struct motion *instance);
 /** Clears a fault while leaving the machine disarmed with unknown position. */
 enum motion_result motion_reset(struct motion *instance);
 
+/** Starts a bounded automatic job; holding torque only persists inside this scope. */
+enum motion_result motion_begin_job(struct motion *instance);
+
+/** Ends an automatic job and always releases the motor driver. */
+enum motion_result motion_end_job(struct motion *instance);
+
 /** Executes one shortest-path ramped move to a zero-based slot. */
 enum motion_result motion_move(struct motion *instance, int slot);
 

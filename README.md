@@ -138,14 +138,16 @@ Changing DM542T microstep switches requires changing the service's
 The touchscreen Settings page stores and applies a motion profile while the
 machine is disarmed. Gentle, Balanced, and Quick are conservative starting
 points; Custom exposes top speed, launch/brake speed, S-curve distance, settle
-time, and holding torque. The daemon enforces its own timing bounds even if a
+time, and holding torque. Holding torque is scoped to automatic work and is
+released when a job ends. The daemon enforces its own timing bounds even if a
 client is compromised. It restores the saved profile after a daemon restart.
 
 The product profile is mutually exclusive: select **Cocktail maker** or
 **Slushie maker** while disarmed and with no work queued. The UI, catalogue,
-and color theme switch together, while the underlying calibrated slot model is
-shared. A later cleaning workflow can be added as a separate maintenance
-profile without mixing it into either product catalogue.
+and color theme switch together. Each product profile retains its own calibrated
+slot map, so a physical changeover never overwrites the other setup. A later
+cleaning workflow can be added as a separate maintenance profile without mixing
+it into either product catalogue.
 
 ## Recipes and inventory
 
@@ -157,12 +159,21 @@ Each bottle has:
 
 - one unique zero-based physical slot;
 - canonical ingredient name and aliases;
-- measured milliliters per press;
+- configurable milliliters per press matching its installed dispenser head;
 - actuator press and release duration.
 
 Recipes are planned in milliliters. If the nearest whole press would exceed the
 configured dose-error tolerance, the drink is unavailable until calibration,
 inventory, or the recipe is corrected.
+
+Recipes declare whether their ingredient order is `strict` or `flexible`.
+Cocktails preserve their authored build order. Fully automatic flexible recipes,
+such as a slushie flavour blend, are ordered from the live turret position to
+reduce travel.
+
+Party mode keeps the touch UI in the menu while orders are queued, and Classic,
+Tropical, and Arcade personalities change the visual treatment and local
+completion tones.
 
 ## Commands
 

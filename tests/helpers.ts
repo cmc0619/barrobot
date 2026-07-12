@@ -84,6 +84,16 @@ export class FakeMotionController implements MotionController {
     return Promise.resolve();
   }
 
+  public beginJob(): Promise<void> {
+    this.calls.push("beginJob");
+    return Promise.resolve();
+  }
+
+  public endJob(): Promise<void> {
+    this.calls.push("endJob");
+    return Promise.resolve();
+  }
+
   public stop(): Promise<void> {
     this.calls.push("stop");
     this.machineStatus = { state: "fault", armed: false, position: null, realtime: true };

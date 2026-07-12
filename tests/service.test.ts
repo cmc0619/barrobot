@@ -38,6 +38,7 @@ const recipe: Recipe = {
   id: "drink",
   source: "custom",
   productProfile: "cocktail",
+  stepOrder: "strict",
   name: "Queued drink",
   imageUrl: null,
   instructions: "Mix",
@@ -49,7 +50,7 @@ const recipe: Recipe = {
 
 function stateWithRecipe(): StateDocument {
   const state = createDefaultState();
-  state.inventory = [bottle, pantry];
+  state.inventoryProfiles.cocktail = [bottle, pantry];
   state.recipes = [recipe];
   return state;
 }
@@ -62,10 +63,16 @@ describe("BarRobotService", () => {
     await service.initialize();
     const submitted = await service.submitJob("drink");
     await waitFor(() => service.getJob(submitted.id).status === "waiting_manual");
-    assert.deepEqual(motion.calls.slice(0, 3), ["status", "move:3", "dispense:3:600:200"]);
+    assert.deepEqual(motion.calls.slice(0, 4), [
+      "status",
+      "beginJob",
+      "move:3",
+      "dispense:3:600:200",
+    ]);
     await service.continueJob(submitted.id);
     await waitFor(() => service.getJob(submitted.id).status === "completed");
     assert.equal(service.getJob(submitted.id).currentStep, 2);
+    assert.ok(motion.calls.includes("endJob"));
   });
 
   it("fails nonterminal jobs after application restart", async () => {
@@ -73,7 +80,7 @@ describe("BarRobotService", () => {
     const job: Job = {
       id: "interrupted",
       status: "running",
-      plan: { recipeId: "drink", recipeName: "Queued drink", steps: [] },
+      plan: { recipeId: "drink", recipeName: "Queued drink", stepOrder: "strict", steps: [] },
       currentStep: 0,
       createdAt: new Date(0).toISOString(),
       updatedAt: new Date(0).toISOString(),
@@ -117,6 +124,27 @@ describe("BarRobotService", () => {
     await service.disarm();
     await service.replaceSettings(settings);
     assert.equal(service.snapshot().settings.productProfile, "slushie");
+  });
+
+  it("keeps cocktail and slushie slot maps independent across a changeover", async () => {
+    const motion = new FakeMotionController();
+    const service = new BarRobotService(
+      new MemoryStateRepository(stateWithRecipe()),
+      motion,
+      new FakeRecipeSource(),
+    );
+    await service.initialize();
+    await service.disarm();
+    const slushieSettings = service.snapshot().settings;
+    slushieSettings.productProfile = "slushie";
+    await service.replaceSettings(slushieSettings);
+    assert.deepEqual(service.inventory(), []);
+    const slushieItem = { ...bottle, id: "blue-raspberry", name: "blue raspberry syrup", slot: 8 };
+    await service.replaceInventory([slushieItem]);
+    const cocktailSettings = service.snapshot().settings;
+    cocktailSettings.productProfile = "cocktail";
+    await service.replaceSettings(cocktailSettings);
+    assert.deepEqual(service.inventory(), [bottle, pantry]);
   });
 
   it("sends changed motion tuning to the daemon while disarmed", async () => {

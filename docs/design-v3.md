@@ -85,8 +85,8 @@ E-stop, but it is implemented as promptly as the existing hardware permits.
 - Each move uses a symmetric cubic S-curve, with zero slope at launch and
   braking. This avoids the sharp initial jerk of a linear ramp.
 - The daemon holds motor torque through the configured settle interval and
-  actuator press when requested; disarm, stop, fault, and reset always release
-  it.
+  actuator press only inside an explicit automatic-job scope. The job end,
+  disarm, stop, fault, and reset paths always release it.
 - Pulse deadlines use `clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ...)` so
   syscall and scheduler latency does not accumulate into positional drift.
 - The motion thread attempts `SCHED_FIFO` when allowed. Failure to obtain it is
@@ -107,6 +107,8 @@ DISARM
 RESET
 SET_POSITION <zero-based-slot>
 CONFIGURE <ramp-steps> <min-half-period-us> <max-half-period-us> <settle-ms> <hold-0-or-1>
+BEGIN_JOB
+END_JOB
 MOVE <zero-based-slot>
 DISPENSE <press-count> <on-ms> <off-ms>
 STOP
@@ -154,7 +156,7 @@ rename, and directory fsync:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "settings": {
     "productProfile": "cocktail",
     "cocktailDbApiKey": "1",
@@ -168,16 +170,22 @@ rename, and directory fsync:
       "settleMs": 280,
       "holdPosition": true
     },
-    "completionSound": "chime"
+    "completionSound": "chime",
+    "personality": "classic",
+    "partyMode": false
   },
-  "inventory": [],
+  "inventoryProfiles": {
+    "cocktail": [],
+    "slushie": []
+  },
   "recipes": []
 }
 ```
 
 The file defaults to `/var/lib/barrobot/state.json`. A new installation seeds
-an empty inventory and a small offline recipe catalogue; CocktailDB sync is an
-explicit operator action, never a startup dependency.
+separate empty cocktail and slushie inventories plus a small offline recipe
+catalogue; CocktailDB sync is an explicit operator action, never a startup
+dependency.
 
 ### Inventory
 
@@ -260,11 +268,13 @@ The UI is a small, dependency-free responsive application:
   catalogue and visual theme;
 - makeable product menu with search and recipe details;
 - live job progress and manual-add acknowledgement;
-- inventory editor with slot uniqueness and per-bottle calibration;
+- separate cocktail/slushie inventory maps with slot uniqueness and per-head
+  serving-size configuration;
 - machine commissioning page for arm/disarm, position establishment, and test
   moves;
-- guarded motion profiles, optional completion chime, settings, and explicit
-  CocktailDB synchronization.
+- guarded motion profiles, job-scoped holding torque, party mode, selectable
+  personalities, optional completion chime, settings, and explicit CocktailDB
+  synchronization.
 
 It is designed for large touch targets and works without external assets after
 installation.

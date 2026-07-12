@@ -15,14 +15,15 @@ describe("JsonStateRepository", () => {
     state.settings.maxDoseErrorPercent = 12;
     await repository.save(state);
     const persisted = JSON.parse(await readFile(path, "utf8"));
-    assert.equal(persisted.schemaVersion, 2);
+    assert.equal(persisted.schemaVersion, 3);
     assert.equal(persisted.settings.maxDoseErrorPercent, 12);
   });
 
   it("rejects corrupt versioned state instead of replacing it", async () => {
     const directory = await mkdtemp(join(tmpdir(), "barrobot-state-"));
     const path = join(directory, "state.json");
-    const payload = '{"schemaVersion":2,"settings":{},"inventory":[],"recipes":[],"jobs":[]}';
+    const payload =
+      '{"schemaVersion":3,"settings":{},"inventoryProfiles":{},"recipes":[],"jobs":[]}';
     await writeFile(path, payload);
     const repository = new JsonStateRepository(path);
     await assert.rejects(repository.load(), /Settings contain invalid values/);

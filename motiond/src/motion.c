@@ -17,6 +17,7 @@ struct motion {
     atomic_bool fault;
     atomic_bool realtime;
     atomic_bool stop_requested;
+    atomic_bool job_active;
     atomic_int position;
 };
 
@@ -63,6 +64,7 @@ struct motion *motion_create(const struct motion_config *config, const struct mo
     atomic_init(&instance->fault, false);
     atomic_init(&instance->realtime, false);
     atomic_init(&instance->stop_requested, false);
+    atomic_init(&instance->job_active, false);
     atomic_init(&instance->position, -1);
     if (safe_outputs(instance) != 0) {
         pthread_mutex_destroy(&instance->hardware_lock);
@@ -174,6 +176,7 @@ enum motion_result motion_disarm(struct motion *instance) {
     }
     atomic_store(&instance->armed, false);
     atomic_store(&instance->stop_requested, true);
+    atomic_store(&instance->job_active, false);
     return safe_outputs(instance) == 0 ? MOTION_OK : fail_motion(instance, MOTION_GPIO_ERROR);
 }
 
@@ -188,7 +191,50 @@ enum motion_result motion_reset(struct motion *instance) {
     atomic_store(&instance->fault, false);
     atomic_store(&instance->stop_requested, false);
     atomic_store(&instance->position, -1);
+    atomic_store(&instance->job_active, false);
     return safe_outputs(instance) == 0 ? MOTION_OK : fail_motion(instance, MOTION_GPIO_ERROR);
+}
+
+enum motion_result motion_begin_job(struct motion *instance) {
+    if (instance == NULL) {
+        return MOTION_INVALID;
+    }
+    if (pthread_mutex_trylock(&instance->hardware_lock) != 0) {
+        return MOTION_BUSY;
+    }
+    enum motion_result result = MOTION_OK;
+    if (!atomic_load(&instance->armed)) {
+        result = MOTION_DISARMED;
+    } else if (atomic_load(&instance->fault)) {
+        result = MOTION_FAULT;
+    } else if (atomic_load(&instance->position) < 0) {
+        result = MOTION_POSITION_UNKNOWN;
+    } else if (atomic_load(&instance->job_active)) {
+        result = MOTION_BUSY;
+    } else {
+        atomic_store(&instance->job_active, true);
+        if (instance->config.hold_position &&
+            set_logical_line(instance, MOTION_LINE_ENABLE, true) != 0) {
+            result = fail_motion(instance, MOTION_GPIO_ERROR);
+        }
+    }
+    pthread_mutex_unlock(&instance->hardware_lock);
+    return result;
+}
+
+enum motion_result motion_end_job(struct motion *instance) {
+    if (instance == NULL) {
+        return MOTION_INVALID;
+    }
+    if (pthread_mutex_trylock(&instance->hardware_lock) != 0) {
+        return MOTION_BUSY;
+    }
+    atomic_store(&instance->job_active, false);
+    const enum motion_result result = set_logical_line(instance, MOTION_LINE_ENABLE, false) == 0
+                                          ? MOTION_OK
+                                          : fail_motion(instance, MOTION_GPIO_ERROR);
+    pthread_mutex_unlock(&instance->hardware_lock);
+    return result;
 }
 
 enum motion_result motion_move(struct motion *instance, int slot) {
@@ -247,7 +293,7 @@ enum motion_result motion_move(struct motion *instance, int slot) {
 
 done:
     if (set_logical_line(instance, MOTION_LINE_STEP, false) != 0 ||
-        (!instance->config.hold_position &&
+        (!(instance->config.hold_position && atomic_load(&instance->job_active)) &&
          set_logical_line(instance, MOTION_LINE_ENABLE, false) != 0)) {
         result = fail_motion(instance, MOTION_GPIO_ERROR);
     }
@@ -306,7 +352,7 @@ enum motion_result motion_dispense(
 
 done:
     if (set_logical_line(instance, MOTION_LINE_ACTUATOR, false) != 0 ||
-        (!instance->config.hold_position &&
+        (!(instance->config.hold_position && atomic_load(&instance->job_active)) &&
          set_logical_line(instance, MOTION_LINE_ENABLE, false) != 0)) {
         result = fail_motion(instance, MOTION_GPIO_ERROR);
     }
@@ -323,6 +369,7 @@ enum motion_result motion_stop(struct motion *instance) {
     atomic_store(&instance->armed, false);
     atomic_store(&instance->fault, true);
     atomic_store(&instance->position, -1);
+    atomic_store(&instance->job_active, false);
     return safe_outputs(instance) == 0 ? MOTION_OK : MOTION_GPIO_ERROR;
 }
 

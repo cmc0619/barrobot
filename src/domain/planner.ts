@@ -1,5 +1,13 @@
 import { DomainError } from "./errors.js";
-import type { DrinkPlan, InventoryItem, MenuRecipe, PlanStep, Recipe, Settings } from "./model.js";
+import {
+  SLOT_COUNT,
+  type DrinkPlan,
+  type InventoryItem,
+  type MenuRecipe,
+  type PlanStep,
+  type Recipe,
+  type Settings,
+} from "./model.js";
 import { normalizeIngredient } from "./normalize.js";
 
 /** Builds an immutable, calibrated drink plan before any hardware operation begins. */
@@ -52,7 +60,12 @@ export function buildDrinkPlan(
       releaseDurationMs: item.releaseDurationMs,
     };
   });
-  return structuredClone({ recipeId: recipe.id, recipeName: recipe.name, steps });
+  return structuredClone({
+    recipeId: recipe.id,
+    recipeName: recipe.name,
+    stepOrder: recipe.stepOrder,
+    steps,
+  });
 }
 
 /** Evaluates every recipe for menu display without discarding the reason it is unavailable. */
@@ -75,6 +88,41 @@ export function buildMenu(
         };
       }
     });
+}
+
+/** Optimizes only explicitly flexible, fully automatic recipes from the live turret position. */
+export function optimizeFlexiblePlan(plan: DrinkPlan, currentSlot: number): DrinkPlan {
+  if (plan.stepOrder !== "flexible" || !plan.steps.every((step) => step.kind === "automatic")) {
+    return structuredClone(plan);
+  }
+  const remaining = [...plan.steps];
+  const ordered: PlanStep[] = [];
+  let position = currentSlot;
+  while (remaining.length > 0) {
+    let bestIndex = 0;
+    for (let index = 1; index < remaining.length; index += 1) {
+      const candidate = remaining[index];
+      const best = remaining[bestIndex];
+      if (!candidate || !best) {
+        continue;
+      }
+      if (slotDistance(position, candidate.slot) < slotDistance(position, best.slot)) {
+        bestIndex = index;
+      }
+    }
+    const [next] = remaining.splice(bestIndex, 1);
+    if (!next) {
+      throw new DomainError("INVALID_PLAN", "Flexible plan contains a missing automatic step");
+    }
+    ordered.push(next);
+    position = next.slot;
+  }
+  return structuredClone({ ...plan, steps: ordered });
+}
+
+function slotDistance(from: number, to: number): number {
+  const clockwise = (to - from + SLOT_COUNT) % SLOT_COUNT;
+  return Math.min(clockwise, SLOT_COUNT - clockwise);
 }
 
 function buildInventoryIndex(inventory: readonly InventoryItem[]): Map<string, InventoryItem> {

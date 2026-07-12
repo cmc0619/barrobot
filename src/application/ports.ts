@@ -16,6 +16,8 @@ export interface MotionController {
   move(slot: number): Promise<void>;
   dispense(pressCount: number, pressDurationMs: number, releaseDurationMs: number): Promise<void>;
   configure(settings: MotionSettings): Promise<void>;
+  beginJob(): Promise<void>;
+  endJob(): Promise<void>;
   stop(): Promise<void>;
 }
 

@@ -118,8 +118,10 @@
           </div>
         </div>
         <p class="muted">
-          Each bottle needs a unique slot and measured milliliters per actuator press.
+          Each profile keeps its own slot map. Set milliliters per press to match the installed
+          dispenser head.
         </p>
+        <p id="profile-inventory-note" class="profile-note"></p>
         <div id="inventory-list" class="inventory-list"></div>
       </section>
 
@@ -217,6 +219,18 @@
                 <option value="fanfare">Fanfare</option>
               </select>
             </label>
+            <label>
+              Machine personality
+              <select name="personality">
+                <option value="classic">Classic bar</option>
+                <option value="tropical">Tropical stand</option>
+                <option value="arcade">Arcade cabinet</option>
+              </select>
+            </label>
+            <label class="checkbox-row"
+              ><input name="partyMode" type="checkbox" /> Party mode — stay in the menu while
+              building a round</label
+            >
             <div class="control-row">
               <button class="button success" type="submit">Save settings</button>
               <button id="sync-recipes" class="button secondary" type="button">

@@ -280,6 +280,10 @@ static enum motion_result dispatch_command(
         result = motion_disarm(motion);
     } else if (strcmp(line, "RESET") == 0) {
         result = motion_reset(motion);
+    } else if (strcmp(line, "BEGIN_JOB") == 0) {
+        result = motion_begin_job(motion);
+    } else if (strcmp(line, "END_JOB") == 0) {
+        result = motion_end_job(motion);
     } else if (strcmp(line, "STOP") == 0) {
         result = motion_stop(motion);
     } else if (sscanf(line, "SET_POSITION %d %c", &first, &extra) == 1) {

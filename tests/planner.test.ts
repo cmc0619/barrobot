@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DomainError } from "../src/domain/errors.js";
-import type { InventoryItem, Recipe, Settings } from "../src/domain/model.js";
-import { buildDrinkPlan, buildMenu } from "../src/domain/planner.js";
+import type { DrinkPlan, InventoryItem, Recipe, Settings } from "../src/domain/model.js";
+import { buildDrinkPlan, buildMenu, optimizeFlexiblePlan } from "../src/domain/planner.js";
 
 const settings: Settings = {
   productProfile: "cocktail",
@@ -20,6 +20,8 @@ const settings: Settings = {
     holdPosition: true,
   },
   completionSound: "chime",
+  personality: "classic",
+  partyMode: false,
 };
 
 const inventory: InventoryItem[] = [
@@ -51,6 +53,7 @@ const recipe: Recipe = {
   id: "test",
   source: "custom",
   productProfile: "cocktail",
+  stepOrder: "strict",
   name: "Test drink",
   imageUrl: null,
   instructions: "Mix",
@@ -98,4 +101,33 @@ describe("buildDrinkPlan", () => {
     assert.equal(menu[0]?.makeable, false);
     assert.match(menu[0]?.reason ?? "", /Missing gin/);
   });
+
+  it("optimizes only explicit flexible automatic plans", () => {
+    const plan: DrinkPlan = {
+      recipeId: "slushie",
+      recipeName: "Fast path",
+      stepOrder: "flexible",
+      steps: [automaticStep("far", 7), automaticStep("near", 2), automaticStep("nearest", 1)],
+    };
+    const optimized = optimizeFlexiblePlan(plan, 0);
+    assert.deepEqual(
+      optimized.steps.map((step) => (step.kind === "automatic" ? step.slot : -1)),
+      [1, 2, 7],
+    );
+    assert.deepEqual(optimizeFlexiblePlan({ ...plan, stepOrder: "strict" }, 0).steps, plan.steps);
+  });
 });
+
+function automaticStep(ingredientName: string, slot: number): DrinkPlan["steps"][number] {
+  return {
+    kind: "automatic",
+    ingredientName,
+    inventoryId: ingredientName,
+    slot,
+    requestedMl: 50,
+    deliveredMl: 50,
+    pressCount: 1,
+    pressDurationMs: 600,
+    releaseDurationMs: 200,
+  };
+}

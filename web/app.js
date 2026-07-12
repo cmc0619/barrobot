@@ -57,6 +57,7 @@ const elements = Object.fromEntries(
     "menu-tab",
     "menu-heading",
     "active-job-label",
+    "profile-inventory-note",
     "toast",
   ].map((id) => [id, document.getElementById(id)]),
 );
@@ -141,7 +142,9 @@ async function refreshSettings() {
   for (const [key, value] of Object.entries(state.settings)) {
     if (key === "motion") continue;
     const field = elements["settings-form"].elements.namedItem(key);
-    if (field) field.value = value;
+    if (!field) continue;
+    if (field.type === "checkbox") field.checked = Boolean(value);
+    else field.value = value;
   }
   for (const [key, value] of Object.entries(state.settings.motion)) {
     const field = elements["settings-form"].elements.namedItem(key);
@@ -155,11 +158,15 @@ async function refreshSettings() {
 function renderProductProfile() {
   const slushie = state.settings?.productProfile === "slushie";
   document.body.dataset.profile = slushie ? "slushie" : "cocktail";
+  document.body.dataset.personality = state.settings?.personality ?? "classic";
   elements["console-title"].textContent = slushie ? "Slushie console" : "Cocktail console";
   elements["menu-tab"].textContent = slushie ? "Slushies" : "Cocktails";
   elements["menu-heading"].textContent = slushie ? "Choose a slushie" : "Choose a cocktail";
   elements["active-job-label"].textContent = slushie ? "ACTIVE SLUSHIE" : "ACTIVE COCKTAIL";
   document.getElementById("sync-recipes").classList.toggle("hidden", slushie);
+  elements["profile-inventory-note"].textContent = slushie
+    ? "Slushie slot map active. Confirm the installed heads and flavours before arming."
+    : "Cocktail slot map active. Confirm the installed heads and bottles before arming.";
 }
 
 function renderStatus() {
@@ -323,11 +330,13 @@ async function saveSettings(event) {
       holdPosition: form.get("holdPosition") === "on",
     },
     completionSound: String(form.get("completionSound") ?? "off"),
+    personality: String(form.get("personality") ?? "classic"),
+    partyMode: form.get("partyMode") === "on",
   };
   state.settings = await api("/api/settings", { method: "PUT", body: settings });
   renderProductProfile();
   toast("Settings saved");
-  await refreshMenu();
+  await Promise.all([refreshMenu(), refreshInventory()]);
 }
 
 function applyMotionPreset() {
@@ -351,7 +360,7 @@ async function syncRecipes() {
 async function submitJob(recipeId) {
   const job = await api("/api/jobs", { method: "POST", body: { recipeId } });
   state.activeJob = job;
-  showView("dashboard");
+  if (!state.settings?.partyMode) showView("dashboard");
   renderJob();
   toast(`${job.plan.recipeName} queued`);
 }
@@ -384,6 +393,8 @@ function playCompletionSound() {
     const oscillator = state.audioContext.createOscillator();
     const gain = state.audioContext.createGain();
     oscillator.frequency.value = frequency;
+    oscillator.type = state.settings.personality === "arcade" ? "square" : "sine";
+    if (state.settings.personality === "tropical") oscillator.detune.value = index * 7;
     gain.gain.setValueAtTime(0.0001, start + index * 0.12);
     gain.gain.exponentialRampToValueAtTime(0.12, start + index * 0.12 + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.12 + 0.22);

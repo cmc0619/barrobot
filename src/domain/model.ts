@@ -4,6 +4,8 @@ export type InventoryMode = "bottle" | "pantry";
 export type ProductProfile = "cocktail" | "slushie";
 export type MotionProfileId = "gentle" | "balanced" | "quick" | "custom";
 export type CompletionSound = "off" | "chime" | "fanfare";
+export type MachinePersonality = "classic" | "tropical" | "arcade";
+export type StepOrder = "strict" | "flexible";
 
 export interface MotionSettings {
   minimumHalfPeriodUs: number;
@@ -36,6 +38,7 @@ export interface Recipe {
   id: string;
   source: "seed" | "cocktaildb" | "custom";
   productProfile: ProductProfile;
+  stepOrder: StepOrder;
   name: string;
   imageUrl: string | null;
   instructions: string;
@@ -52,6 +55,8 @@ export interface Settings {
   motionProfile: MotionProfileId;
   motion: MotionSettings;
   completionSound: CompletionSound;
+  personality: MachinePersonality;
+  partyMode: boolean;
 }
 
 export interface AutomaticPlanStep {
@@ -78,6 +83,7 @@ export type PlanStep = AutomaticPlanStep | ManualPlanStep;
 export interface DrinkPlan {
   recipeId: string;
   recipeName: string;
+  stepOrder: StepOrder;
   steps: PlanStep[];
 }
 
@@ -95,9 +101,9 @@ export interface Job {
 }
 
 export interface StateDocument {
-  schemaVersion: 2;
+  schemaVersion: 3;
   settings: Settings;
-  inventory: InventoryItem[];
+  inventoryProfiles: Record<ProductProfile, InventoryItem[]>;
   recipes: Recipe[];
   jobs: Job[];
 }

@@ -5,6 +5,7 @@ const SEED_RECIPES: Recipe[] = [
     id: "seed:gin-tonic",
     source: "seed",
     productProfile: "cocktail",
+    stepOrder: "strict",
     name: "Gin and Tonic",
     imageUrl: null,
     instructions: "Pour over ice and garnish with lime.",
@@ -18,6 +19,7 @@ const SEED_RECIPES: Recipe[] = [
     id: "seed:rum-cola",
     source: "seed",
     productProfile: "cocktail",
+    stepOrder: "strict",
     name: "Rum and Cola",
     imageUrl: null,
     instructions: "Pour over ice and stir.",
@@ -30,6 +32,7 @@ const SEED_RECIPES: Recipe[] = [
     id: "seed:screwdriver",
     source: "seed",
     productProfile: "cocktail",
+    stepOrder: "strict",
     name: "Screwdriver",
     imageUrl: null,
     instructions: "Pour over ice and stir.",
@@ -42,6 +45,7 @@ const SEED_RECIPES: Recipe[] = [
     id: "seed:martini",
     source: "seed",
     productProfile: "cocktail",
+    stepOrder: "strict",
     name: "Dry Martini",
     imageUrl: null,
     instructions: "Stir with ice, strain, and garnish.",
@@ -58,6 +62,7 @@ const SLUSHIE_RECIPES: Recipe[] = [
     id: "seed:strawberry-lemonade-slush",
     source: "seed",
     productProfile: "slushie",
+    stepOrder: "flexible",
     name: "Strawberry Lemonade Slush",
     imageUrl: null,
     instructions: "Fill the cup with slush base, then add the selected flavours.",
@@ -70,6 +75,7 @@ const SLUSHIE_RECIPES: Recipe[] = [
     id: "seed:blue-raspberry-slush",
     source: "seed",
     productProfile: "slushie",
+    stepOrder: "flexible",
     name: "Blue Raspberry Slush",
     imageUrl: null,
     instructions: "Fill the cup with slush base, then add the selected flavour.",
@@ -82,7 +88,7 @@ const SLUSHIE_RECIPES: Recipe[] = [
 /** Creates the complete initial state for a new v3 installation. */
 export function createDefaultState(): StateDocument {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     settings: {
       productProfile: "cocktail",
       cocktailDbApiKey: "1",
@@ -99,8 +105,10 @@ export function createDefaultState(): StateDocument {
         holdPosition: true,
       },
       completionSound: "chime",
+      personality: "classic",
+      partyMode: false,
     },
-    inventory: [],
+    inventoryProfiles: { cocktail: [], slushie: [] },
     recipes: structuredClone([...SEED_RECIPES, ...SLUSHIE_RECIPES]),
     jobs: [],
   };

@@ -40,6 +40,19 @@ body[data-profile="slushie"] {
   background: radial-gradient(circle at top right, #0d3d58 0, transparent 30rem), var(--background);
 }
 
+body[data-personality="tropical"] {
+  --accent: #f5c64e;
+  --accent-dark: #c56624;
+  background: radial-gradient(circle at top right, #1a674f 0, transparent 30rem), var(--background);
+}
+
+body[data-personality="arcade"] {
+  --accent: #ff58d0;
+  --accent-dark: #7727b9;
+  --success: #66e5ed;
+  background: radial-gradient(circle at top right, #352069 0, transparent 30rem), var(--background);
+}
+
 button,
 input,
 select {
@@ -278,6 +291,14 @@ main {
 .muted {
   margin-top: 0.8rem;
   color: var(--muted);
+}
+
+.profile-note {
+  padding: 0.8rem 1rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent), transparent 86%);
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 62%);
+  border-radius: 12px;
 }
 
 .drink-grid {
