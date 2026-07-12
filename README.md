@@ -1,100 +1,192 @@
+# BarRobot v3
+
+BarRobot v3 is a greenfield controller for the existing 12-bottle Raspberry Pi
+cocktail turret. It keeps the purchased Pi, DM542T, NEMA-17, actuator, power
+supply, and wiring. It does not preserve the old Flask application, routes,
+configuration, recipe scaling, or Python modules.
+
 ![BarRobot](barrobot.jpg)
-# BarRobot 🍸🤖
 
-An open-source, 12-bottle cocktail turret that dispenses drinks on demand through a Flask-based web + touch-screen UI.  
-Built for hobbyists, makers, and thirsty hackers who’d rather code than bartend.
+## Architecture
 
----
+Two services run on the Pi:
 
-## ✨ Key Features
-| Category | What it does |
-| --- | --- |
-| **Hardware** | • 12-slot rotating turret driven by a NEMA-17 + DM542T stepper <br>• Linear actuator (≈ 6 ″ clearance, 0.5 ″ stroke) pushes each bottle’s valve <br>• 24 V / 5 A Mean Well PSU <br>• Optional “Safe Mode” disables the pour GPIOs for dry-runs |
-| **Software** | • Flask server & lightweight JS/HTMX front-end <br>• Live recipe sync from [TheCocktailDB](https://www.thecocktaildb.com/) <br>• Dynamic menu shows only makeable drinks based on current slots <br>• Settings page (motor params, theme toggle, default shot size, etc.) <br>• Debug & test pages for turret rotation, actuator jog, GPIO pins <br>• Auto-update: checks GitHub on startup & via manual button, restarts via systemd |
-| **Versioning** | Semver-ish thousandths (e.g. **0.004**) stored in `version.txt`, incremented automatically when bundling release ZIPs |
-| **Dev-Ops** | • `.service` file for **systemd** auto-start <br>• GitHub Actions stub for lint/tests (extend as you like) |
+- `barrobot`: a strict TypeScript application on Node.js 24 LTS. It serves the
+  touchscreen UI and API, validates recipes and inventory, calculates calibrated
+  pours, persists state atomically, and runs one FIFO drink queue.
+- `barrobot-motiond`: a native C11 daemon that exclusively owns the four GPIO
+  lines through Linux GPIO v2. It controls step timing, ramps, actuator timing,
+  position trust, arming, faults, and stop handling.
 
----
+They communicate through `/run/barrobot/motion.sock`. HTTP code never owns GPIO,
+and the motion daemon never accepts network traffic.
 
-## 🛠️ Hardware Bill of Materials (core)
-| Qty | Item | Notes |
-| --- | --- | --- |
-| 1 | Raspberry Pi 4 (2 GB +) | Controls everything |
-| 1 | 24 V 5 A Mean Well LRS-120-24 | Shared PSU |
-| 1 | DM542T stepper driver | Micro-stepping friendly |
-| 1 | NEMA-17 42 mm stepper, 400 mN·m + | Turret rotation |
-| 1 | 12-slot aluminum turret + flange couplers | Houses bottles |
-| 1 | Linear actuator (0.5 ″ stroke, 24 V) | Pushes bottle valves |
-| 1 | Thrust bearing + MayTec 1.11.0408KT.89SP plate | Supports turret load |
-| … | Jumper wires, limit switch (home), misc. M3/M4 hardware | |
+The full design and safety contract is in [docs/design-v3.md](docs/design-v3.md).
 
-*(Full BoM, coupler part #s, and mounting drawings live in `/docs`.)*
+## Why a native motion service?
 
----
+The DM542T needs a clean pulse train. Node is excellent for the application but
+should not bit-bang a stepper from its event loop. The daemon schedules absolute
+deadlines against `CLOCK_MONOTONIC`, so per-call latency does not accumulate
+into positional drift. It uses the maintained Linux GPIO character-device API,
+not retired Pi-specific GPIO packages.
 
-## 💻 Software Prerequisites
+No extra controller board or other hardware is required.
+
+## Safety behavior
+
+Every daemon start begins with:
+
+- actuator low;
+- step low;
+- driver disabled;
+- machine disarmed;
+- turret position unknown.
+
+Because the existing hardware has no implemented home sensor, the operator must
+physically align the turret and establish its position before arming. Stop,
+interrupted motion, daemon restart, GPIO failure, or timeout disarms the machine
+and invalidates position.
+
+No GET endpoint can move hardware. A drink is fully preflighted before it enters
+the queue, and uncertain recipe measurements remain manual instead of being
+guessed.
+
+## Requirements
+
+- Raspberry Pi OS with a current kernel exposing GPIO v2
+- the existing BarRobot hardware
+- Node.js 24 LTS
+- GCC, GNU Make, and Linux kernel headers for building `barrobot-motiond`
+
+The production systemd unit expects the header GPIO lines at
+`/dev/gpiochip0`. Confirm this on the target Pi with `gpioinfo`; change the unit's
+`--chip` argument if the header is exposed elsewhere.
+
+## Development
 
 ```bash
-sudo apt update
-sudo apt install python3 python3-venv git
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt   # Flask, requests, RPi.GPIO, etc.
+npm ci
+make check
+make test
+make all
 ```
 
----
+The test suite does not access CocktailDB, a Unix motion socket, or GPIO. Native
+motion tests use a fake backend and verify exact step counts under sanitizers.
 
-## 🚀 Quick-start
+Run the web application without hardware:
 
 ```bash
-# 1. Clone
-git clone https://github.com/cmc0619/barrobot.git
-cd barrobot
-
-# 2. Configure bottles (or use the web UI later)
-cp bottle_config.sample.json bottle_config.json
-nano bottle_config.json   # map each slot to an ingredient
-
-# 3. Run it
-python app.py             # dev mode
-# or enable the systemd service for auto-start
-sudo cp systemd-barrobot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now systemd-barrobot
+npm run dev
 ```
 
-Open `http://<pi-ip>:5000` to view the menu, settings, and debug pages.
+The UI will report the motion daemon as offline, but inventory, recipe, and
+planning work remains available.
 
----
+## Raspberry Pi installation
 
-## ⚙️ Configuration Reference
-| File / Page | Purpose |
-| --- | --- |
-| `bottle_config.json` | Maps turret slots → ingredient names (case-insensitive) |
-| **Settings →** UI | Theme, default pour size, GPIO pins, motor params, “Safe Mode” |
-| `hardware.py` | Low-level stepper/actuator helper; tweak if you swap drivers |
-| `live_Recipes.json` | Auto-downloaded on startup then merged into `recipes.json` |
+Install Node.js 24 LTS and build prerequisites first. From the repository:
 
----
+```bash
+sudo ./scripts/install.sh
+```
 
-## 🔄 Updates & Releases
+The installer:
 
-*Version file:* `version.txt` (3-digit thousandths)  
-The ZIP bundler bumps this automatically—so tag **0.004**, **0.005**, etc.
+1. creates the unprivileged `barrobot` service account;
+2. adds it to the Raspberry Pi `gpio` group;
+3. builds the TypeScript application and C daemon;
+4. installs under `/opt/barrobot`;
+5. creates `/var/lib/barrobot` for state;
+6. installs and starts both systemd units.
 
-The Flask app checks GitHub for newer tags on boot.  
-From the main page you can also hit **Update Now →**; after a successful pull it restarts the `systemd` service.
+Open `http://<pi-address>:5000`.
 
----
+## First commissioning
 
-## 🤝 Contributing
+1. Leave bottles unloaded and select the **Gentle** motion profile.
+2. Confirm `/dev/gpiochip0` represents the header GPIO and confirm BCM offsets
+   20, 21, 16, and 26.
+3. Start both services and confirm the UI reports **disarmed** and **position
+   unknown**.
+4. Physically align the turret with slot 1 and establish slot 1 in the UI.
+5. Arm and test each slot with the turret unloaded.
+6. Add bottles and measure milliliters delivered by one actuator press for each
+   installed bottle.
+7. Enter those calibration values in Inventory.
+8. Test small recipes before normal operation. Only try Balanced or Quick after
+   the fully loaded turret is repeatable and stable.
 
-Issues & PRs welcome! For major changes, open an issue first to discuss what you’d like to add or tweak.
+## Configuration
 
----
+Application state is stored in `/var/lib/barrobot/state.json` using atomic
+replacement. v3 does not read or migrate v1/v2 files.
 
-## 📜 License
+Mechanical configuration is explicit in `deploy/barrobot-motion.service`,
+including:
 
-[MIT](LICENSE) © 2025 Cliff Campbell (cmc0619)  
-MIT – hack it, remix it, just don’t blame me if it pours you a triple.
+- GPIO chip and BCM offsets;
+- slot count;
+- motor steps and microsteps;
+- default ramp length;
+- default minimum and maximum half-period timing.
 
+Changing DM542T microstep switches requires changing the service's
+`--microsteps` argument to match.
+
+The touchscreen Settings page stores and applies a motion profile while the
+machine is disarmed. Gentle, Balanced, and Quick are conservative starting
+points; Custom exposes top speed, launch/brake speed, S-curve distance, settle
+time, and holding torque. Holding torque is scoped to automatic work and is
+released when a job ends. The daemon enforces its own timing bounds even if a
+client is compromised. It restores the saved profile after a daemon restart.
+
+The product profile is mutually exclusive: select **Cocktail maker** or
+**Slushie maker** while disarmed and with no work queued. The UI, catalogue,
+and color theme switch together. Each product profile retains its own calibrated
+slot map, so a physical changeover never overwrites the other setup. A later
+cleaning workflow can be added as a separate maintenance profile without mixing
+it into either product catalogue.
+
+## Recipes and inventory
+
+The first run includes small offline cocktail and slushie catalogues. CocktailDB
+synchronization is visible only in the Cocktail maker profile, is explicit, and
+is never required at startup.
+
+Each bottle has:
+
+- one unique zero-based physical slot;
+- canonical ingredient name and aliases;
+- configurable milliliters per press matching its installed dispenser head;
+- actuator press and release duration.
+
+Recipes are planned in milliliters. If the nearest whole press would exceed the
+configured dose-error tolerance, the drink is unavailable until calibration,
+inventory, or the recipe is corrected.
+
+Recipes declare whether their ingredient order is `strict` or `flexible`.
+Cocktails preserve their authored build order. Fully automatic flexible recipes,
+such as a slushie flavour blend, are ordered from the live turret position to
+reduce travel.
+
+Bottle rows include an operator-maintained fill estimate. It is used only to
+slow automatic moves by 25% or 50% when the turret is strongly lopsided; it
+never speeds a move beyond the selected motion profile.
+
+Party mode keeps the touch UI in the menu while orders are queued, and Classic,
+Tropical, and Arcade personalities change the visual treatment and local
+completion tones.
+
+## Commands
+
+```bash
+systemctl status barrobot-motion.service barrobot.service
+journalctl -u barrobot-motion.service -u barrobot.service -f
+systemctl restart barrobot-motion.service barrobot.service
+```
+
+## License
+
+[MIT](LICENSE) © 2025–2026 Cliff Campbell

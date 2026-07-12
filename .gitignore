@@ -1,8 +1,15 @@
-recipes.json
-*.pyc
-__pycache__/
+node_modules/
+dist/
+.test-dist/
+.pytest_cache/
+.ruff_cache/
+coverage/
+*.log
+.env
+data/state.json
+data/*.tmp
+build/
+barrobot.egg-info/
 .venv/
-old/
-# Personal secrets
-config.json
-backups/
+__pycache__/
+*.pyc
