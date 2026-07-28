@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Motor Controls</h1>
+
+  <h2>GPIO Pin Map</h2>
+  <form action="{{ url_for('web.motor_controls') }}" method="post">
+    <table class="config-table">
+      <thead><tr><th>Signal</th><th>BCM Pin #</th></tr></thead>
+      <tbody>
+        {% for sig in ["DIR", "STEP", "ENABLE", "ACTUATOR"] %}
+          <tr>
+            <td>{{ sig }}</td>
+            <td><input type="number" name="{{ sig }}" value="{{ pins[sig] }}" required></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-actions" style="margin-top:1rem;">
+      <button class="btn" type="submit">Save Pins</button>
+    </div>
+  </form>
+
+  <h2 style="margin-top:2rem;">Current Position</h2>
+  <p>
+    {% if current_slot is not none %}
+      Trusted position: <strong>slot {{ current_slot + 1 }}</strong>.
+    {% else %}
+      <strong>Position unknown.</strong> Visually align the turret, then establish its current slot before live movement.
+    {% endif %}
+  </p>
+  <div class="inline-controls">
+    <select id="positionSelect" aria-label="Current physical slot">
+      {% for n in range(1, 13) %}
+        <option value="{{ n }}" {% if current_slot == n - 1 %}selected{% endif %}>Slot {{ n }}</option>
+      {% endfor %}
+    </select>
+    <button id="positionButton" class="btn" type="button">Establish Position</button>
+    <span id="positionStatus" class="status" role="status"></span>
+  </div>
+
+  <h2 style="margin-top:2rem;">Test Rotation</h2>
+  <p>Select a slot and the turret will rotate immediately{% if safe_mode %} in safe mode{% endif %}.</p>
+
+  <select id="slotSelect">
+    <option value="">— choose slot —</option>
+    {% for n in range(1, 13) %}
+      <option value="{{ n }}">{{ n }}</option>
+    {% endfor %}
+  </select>
+  <span id="slotStatus" class="status" role="status"></span>
+
+  <script>
+    const sel = document.getElementById('slotSelect');
+    const stat = document.getElementById('slotStatus');
+    const positionSelect = document.getElementById('positionSelect');
+    const positionButton = document.getElementById('positionButton');
+    const positionStatus = document.getElementById('positionStatus');
+
+    positionButton.addEventListener('click', async () => {
+      positionButton.disabled = true;
+      positionStatus.textContent = '⏳ Saving...';
+      try {
+        const response = await fetch(`/api/position/${positionSelect.value}`, {method: 'POST'});
+        const payload = await response.json();
+        positionStatus.textContent = response.ok
+          ? `✅ Position set to slot ${payload.slot}`
+          : `❌ ${payload.msg || 'Error'}`;
+      } catch (error) {
+        positionStatus.textContent = '❌ Network error';
+      } finally {
+        positionButton.disabled = false;
+      }
+    });
+
+    sel.addEventListener('change', async (e) => {
+      const val = e.target.value;
+      if (!val) return;
+      sel.disabled = true;
+      stat.textContent = '⏳ Moving...';
+      try {
+        const res = await fetch(`/api/rotate/${val}`, {method: 'POST'});
+        if (res.ok) {
+          stat.textContent = `✅ At slot ${val}`;
+        } else {
+          const payload = await res.json();
+          stat.textContent = `❌ ${payload.msg || 'Error'}`;
+        }
+      } catch (err) {
+        stat.textContent = '❌ Network error';
+      } finally {
+        sel.disabled = false;
+      }
+    });
+  </script>
+{% endblock %}

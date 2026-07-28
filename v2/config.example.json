@@ -1,0 +1,27 @@
+{
+  "api_key": "1",
+  "shot_size": 1.5,
+  "slots": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "pantry": [],
+  "substitutions": {},
+  "safe_mode": true,
+  "pins": {
+    "DIR": 20,
+    "STEP": 21,
+    "ENABLE": 16,
+    "ACTUATOR": 26
+  }
+}
