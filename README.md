@@ -19,6 +19,60 @@ actuator.
 - Runs without Raspberry Pi GPIO in safe mode, including on development and CI
   machines.
 
+## The UI
+
+Flask serves five touch-sized pages at `http://<pi-address>:5000`. The shots
+below come from a demo 12-bottle configuration running in safe mode.
+
+### Menu
+
+![Menu page showing a grid of drink cards, each with a photo and a Pour button](docs/screenshots/menu-v2.png)
+
+Only drinks supported by the loaded bottles, pantry, and substitutions appear.
+Pour submits a POST, so a refresh or a crawler can never start a drink.
+
+### Drink detail
+
+![Margarita detail page with ingredient amounts and instructions](docs/screenshots/drink-detail-v2.png)
+
+Quantities are shown as the machine will pour them, rounded to whole increments
+of the configured shot size.
+
+### Pouring
+
+![Menu page with a status list describing each ingredient as it is dispensed](docs/screenshots/pour-v2.png)
+
+The complete recipe is preflighted before the first bottle moves, then each step
+reports which ingredient it is dispensing and which pantry items need a manual
+top-up.
+
+### Suggestions
+
+![Suggestions page showing drinks that are one ingredient short](docs/screenshots/suggestions-v2.png)
+
+Recipes you are exactly one ingredient away from making.
+
+### Suggestions 2
+
+![Table of drinks alongside the ingredients missing for each](docs/screenshots/suggestions2-v2.png)
+
+Every recipe you cannot make yet, with all of its missing ingredients.
+
+### Configure Bottles
+
+![Bottle slot configuration form with 12 slots, pantry, substitutions and safe mode](docs/screenshots/configure-v2.png)
+
+Slot assignments, pantry contents, substitutions, shot size, and safe mode. The
+form is validated as a whole, so a rejected edit never writes a partial config.
+
+### Motor Controls
+
+![Motor controls page with a GPIO pin map, trusted position, and slot rotation tester](docs/screenshots/motor-controls-v2.png)
+
+The pin map plus the trusted-position workflow. Because there is no homing
+switch, live movement stays blocked until an operator aligns the turret and
+establishes its slot here.
+
 ## Hardware
 
 | Quantity | Component | Notes |
