@@ -4,7 +4,7 @@ BarRobot is an open-source, 12-bottle cocktail turret controlled by a Raspberry
 Pi, Flask touchscreen UI, NEMA-17 stepper, DM542T driver, and bottle-valve
 actuator.
 
-![BarRobot](barrobot.jpg)
+![BarRobot](../barrobot.jpg)
 
 ## What it does
 
@@ -192,4 +192,4 @@ intentional changes, architecture, and acceptance criteria.
 
 ## License
 
-[MIT](LICENSE) © 2025 Cliff Campbell (cmc0619)
+[MIT](../LICENSE) © 2025 Cliff Campbell (cmc0619)

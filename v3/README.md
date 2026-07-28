@@ -5,7 +5,7 @@ cocktail turret. It keeps the purchased Pi, DM542T, NEMA-17, actuator, power
 supply, and wiring. It does not preserve the old Flask application, routes,
 configuration, recipe scaling, or Python modules.
 
-![BarRobot](barrobot.jpg)
+![BarRobot](../barrobot.jpg)
 
 ## The UI
 
@@ -242,4 +242,4 @@ systemctl restart barrobot-motion.service barrobot.service
 
 ## License
 
-[MIT](LICENSE) © 2025–2026 Cliff Campbell
+[MIT](../LICENSE) © 2025–2026 Cliff Campbell

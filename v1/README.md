@@ -151,6 +151,6 @@ Issues & PRs welcome! For major changes, open an issue first to discuss what you
 
 ## 📜 License
 
-[MIT](LICENSE) © 2025 Cliff Campbell (cmc0619)  
+[MIT](../LICENSE) © 2025 Cliff Campbell (cmc0619)  
 MIT – hack it, remix it, just don’t blame me if it pours you a triple.
 
