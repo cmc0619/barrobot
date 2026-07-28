@@ -7,6 +7,59 @@ configuration, recipe scaling, or Python modules.
 
 ![BarRobot](barrobot.jpg)
 
+## The UI
+
+One dependency-free touchscreen console with four tabs. These shots use a demo
+12-bottle cocktail profile calibrated at 15 ml per press.
+
+### Machine
+
+![Machine tab showing state, position, timing and queue cards above the commissioning controls](docs/screenshots/dashboard-v3.png)
+
+Live machine state above the commissioning controls. The turret has been
+aligned, its slot established, and the machine armed; STOP stays reachable from
+every screen.
+
+### Cocktails
+
+![Catalogue filtered to gin drinks, with unavailable cards explaining what is missing](docs/screenshots/menu-v3.png)
+
+The catalogue never hides a drink. Anything it cannot pour is disabled with the
+specific reason — a missing ingredient, or a dose the installed head cannot hit
+within the configured error tolerance.
+
+### Pouring
+
+![Active cocktail panel showing a Margarita in progress while dispensing triple sec](docs/screenshots/job-v3.png)
+
+A queued drink is planned in full before the turret moves. The panel tracks the
+running step while the status cards show the machine busy at the slot being
+poured.
+
+### Manual steps
+
+![Active cocktail panel paused and asking the operator to add 29.6 ml of lime juice](docs/screenshots/job-manual-v3.png)
+
+Ingredients that are not in a calibrated bottle pause the job instead of being
+guessed. The machine waits for the operator to confirm the pour before it
+continues.
+
+### Inventory
+
+![Inventory tab listing bottles with aliases, slot, millilitres per press and fill estimate](docs/screenshots/inventory-v3.png)
+
+Each bottle carries its own slot, aliases, calibration, and fill estimate. The
+slot map belongs to the active product profile, so a cocktail-to-slushie
+changeover never overwrites the other setup.
+
+### Settings
+
+![Settings tab with product profile, motion profile, dose tolerance and personality options](docs/screenshots/settings-v3.png)
+
+Product profile, dose-error tolerance, motion preset with its individual timing
+values, completion sound, and personality. Motion changes are only accepted
+while the machine is disarmed.
+
 ## Architecture
 
 Two services run on the Pi:
