@@ -1,5 +1,5 @@
-![BarRobot](barrobot.jpg)
-# BarRobot 🍸🤖
+![BarRobot](../barrobot.jpg)
+# BarRobot v1 🍸🤖
 
 An open-source, 12-bottle cocktail turret that dispenses drinks on demand through a Flask-based web + touch-screen UI.  
 Built for hobbyists, makers, and thirsty hackers who’d rather code than bartend.
