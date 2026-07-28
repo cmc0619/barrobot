@@ -16,6 +16,62 @@ Built for hobbyists, makers, and thirsty hackers who’d rather code than barten
 
 ---
 
+## 📸 The UI
+
+Every page is served by the Flask app at `http://<pi-ip>:5000` and is sized for fat fingers on the
+Pi's touchscreen, but it works just as well from a phone or laptop on the same network.
+The shots below use a demo 12-bottle setup with Safe Mode on.
+
+### Menu
+
+![Menu page showing a grid of drink cards, each with a photo and a Pour button](docs/screenshots/menu.png)
+
+The menu only lists drinks you can actually make right now — every ingredient has to be in a slot,
+in the pantry, or covered by a substitution. Tap **Pour** and the turret does the rest.
+
+### Drink detail
+
+![Drink detail page for a Margarita with scaled ingredient amounts and instructions](docs/screenshots/drink-detail.png)
+
+Tapping a thumbnail opens the recipe with quantities already rescaled to whole dispenser shots,
+so the amounts you read are the amounts the machine will actually pour.
+
+### Pouring
+
+![Menu page with a status log listing each ingredient as it is dispensed](docs/screenshots/pour.png)
+
+While a drink is being made, the app logs each step — which bottle it rotated to, how much it
+dispensed, and any pantry items you need to top up by hand.
+
+### Suggestions
+
+![Suggestions page showing drinks that are one ingredient short](docs/screenshots/suggestions.png)
+
+*Almost There…* lists every recipe you're exactly **one** ingredient away from — a handy shopping
+list for the next liquor-store run.
+
+### Suggestions 2
+
+![Table of drinks alongside the ingredients missing for each](docs/screenshots/suggestions2.png)
+
+The wider view: every recipe you can't make yet, with all of its missing ingredients listed.
+
+### Configure Bottles
+
+![Bottle slot configuration form with 12 slots, pantry list, substitutions and safe mode](docs/screenshots/configure.png)
+
+Map each of the 12 turret slots to an ingredient, list the mixers and garnishes you keep on hand,
+set up substitutions (`rum` → `light rum`), pick your shot size, and flip Safe Mode for dry runs.
+
+### Motor Controls
+
+![Motor controls page with a GPIO pin map form and a slot rotation tester](docs/screenshots/motor-controls.png)
+
+Remap the GPIO pins without touching code, then use the slot picker to jog the turret and confirm
+each bottle lines up under the actuator.
+
+---
+
 ## 🛠️ Hardware Bill of Materials (core)
 | Qty | Item | Notes |
 | --- | --- | --- |
