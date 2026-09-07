@@ -1,8 +1,29 @@
-recipes.json
+# Python (v1, v2)
 *.pyc
 __pycache__/
 .venv/
-old/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+
+# Node (v3)
+node_modules/
+dist/
+.test-dist/
+coverage/
+
+# Generated at runtime
+recipes.json
+v3/data/state.json
+v3/data/*.tmp
+*.log
+
 # Personal secrets
 config.json
+.env
+
+old/
 backups/

@@ -1,0 +1,31 @@
+[Unit]
+Description=BarRobot v3 application
+After=network-online.target barrobot-motion.service
+Wants=network-online.target
+Requires=barrobot-motion.service
+
+[Service]
+Type=simple
+User=barrobot
+Group=barrobot
+WorkingDirectory=/opt/barrobot/app
+StateDirectory=barrobot
+Environment=NODE_ENV=production
+Environment=BARROBOT_STATE_PATH=/var/lib/barrobot/state.json
+Environment=BARROBOT_MOTION_SOCKET=/run/barrobot/motion.sock
+Environment=BARROBOT_HOST=0.0.0.0
+Environment=BARROBOT_PORT=5000
+ExecStart=/usr/bin/node /opt/barrobot/app/dist/main.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/var/lib/barrobot /run/barrobot
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

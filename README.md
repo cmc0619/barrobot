@@ -1,156 +1,68 @@
 ![BarRobot](barrobot.jpg)
+
 # BarRobot 🍸🤖
 
-An open-source, 12-bottle cocktail turret that dispenses drinks on demand through a Flask-based web + touch-screen UI.  
-Built for hobbyists, makers, and thirsty hackers who’d rather code than bartend.
+An open-source, 12-bottle cocktail turret: a Raspberry Pi rotates bottles over a
+glass and presses each bottle's valve to pour a measured drink.
 
----
+This repository holds **three complete implementations** of the controller, each
+in its own directory. They are independent — pick one, install it, and ignore
+the others. The hardware is the same for all three.
 
-## ✨ Key Features
-| Category | What it does |
-| --- | --- |
-| **Hardware** | • 12-slot rotating turret driven by a NEMA-17 + DM542T stepper <br>• Linear actuator (≈ 6 ″ clearance, 0.5 ″ stroke) pushes each bottle’s valve <br>• 24 V / 5 A Mean Well PSU <br>• Optional “Safe Mode” disables the pour GPIOs for dry-runs |
-| **Software** | • Flask server & lightweight JS/HTMX front-end <br>• Live recipe sync from [TheCocktailDB](https://www.thecocktaildb.com/) <br>• Dynamic menu shows only makeable drinks based on current slots <br>• Settings page (motor params, theme toggle, default shot size, etc.) <br>• Debug & test pages for turret rotation, actuator jog, GPIO pins <br>• Auto-update: checks GitHub on startup & via manual button, restarts via systemd |
-| **Versioning** | Semver-ish thousandths (e.g. **0.004**) stored in `version.txt`, incremented automatically when bundling release ZIPs |
-| **Dev-Ops** | • `.service` file for **systemd** auto-start <br>• GitHub Actions stub for lint/tests (extend as you like) |
+| | Directory | Stack | Status |
+| --- | --- | --- | --- |
+| **v1** | [`v1/`](v1/) | Python 3, Flask, single module | The original. Kept for reference. |
+| **v2** | [`v2/`](v2/) | Python 3, Flask, layered services | A safety and testability rewrite of v1. Same pages and URLs. |
+| **v3** | [`v3/`](v3/) | Node.js 24, TypeScript, Fastify, native C motion daemon | A greenfield rebuild. New UI, new API, new hardware boundary. |
 
----
+## Which one should I use?
 
-## 📸 The UI
+- **Start with [v3](v3/)** if you are building the machine now. It keeps GPIO in
+  a dedicated C daemon, refuses to move until an operator establishes the
+  turret's position, plans a drink completely before pouring it, and pauses for
+  ingredients it cannot dispense instead of guessing.
+- **Use [v2](v2/)** if you want the original Flask UI with the safety fixes: full
+  recipe preflight, serialized hardware operations, trusted-position handling,
+  and a test suite that runs without a Pi.
+- **Use [v1](v1/)** only to see where the project started.
 
-Every page is served by the Flask app at `http://<pi-ip>:5000` and is sized for fat fingers on the
-Pi's touchscreen, but it works just as well from a phone or laptop on the same network.
-The shots below use a demo 12-bottle setup with Safe Mode on.
+Each directory has its own README with hardware notes, install steps, and
+screenshots of that version's UI.
 
-### Menu
+## What they look like
 
-![Menu page showing a grid of drink cards, each with a photo and a Pour button](docs/screenshots/menu.png)
+### v1 — the original Flask menu
 
-The menu only lists drinks you can actually make right now — every ingredient has to be in a slot,
-in the pantry, or covered by a substitution. Tap **Pour** and the turret does the rest.
+[![v1 menu](v1/docs/screenshots/menu.png)](v1/README.md)
 
-### Drink detail
+### v2 — same pages, tightened up
 
-![Drink detail page for a Margarita with scaled ingredient amounts and instructions](docs/screenshots/drink-detail.png)
+[![v2 pour status list](v2/docs/screenshots/pour-v2.png)](v2/README.md)
 
-Tapping a thumbnail opens the recipe with quantities already rescaled to whole dispenser shots,
-so the amounts you read are the amounts the machine will actually pour.
+### v3 — new touchscreen console
 
-### Pouring
+[![v3 machine tab](v3/docs/screenshots/dashboard-v3.png)](v3/README.md)
 
-![Menu page with a status log listing each ingredient as it is dispensed](docs/screenshots/pour.png)
+## Hardware
 
-While a drink is being made, the app logs each step — which bottle it rotated to, how much it
-dispensed, and any pantry items you need to top up by hand.
+All three drive the same build: a Raspberry Pi, a 24 V supply, a DM542T driver
+and NEMA-17 stepper turning a 12-slot turret, and a linear actuator that presses
+the bottle valves. Full bills of materials are in the version READMEs.
 
-### Suggestions
+Because the turret has no home switch, every version requires the operator to
+align it physically and establish its slot before any live movement.
 
-![Suggestions page showing drinks that are one ingredient short](docs/screenshots/suggestions.png)
+## Repository layout
 
-*Almost There…* lists every recipe you're exactly **one** ingredient away from — a handy shopping
-list for the next liquor-store run.
-
-### Suggestions 2
-
-![Table of drinks alongside the ingredients missing for each](docs/screenshots/suggestions2.png)
-
-The wider view: every recipe you can't make yet, with all of its missing ingredients listed.
-
-### Configure Bottles
-
-![Bottle slot configuration form with 12 slots, pantry list, substitutions and safe mode](docs/screenshots/configure.png)
-
-Map each of the 12 turret slots to an ingredient, list the mixers and garnishes you keep on hand,
-set up substitutions (`rum` → `light rum`), pick your shot size, and flip Safe Mode for dry runs.
-
-### Motor Controls
-
-![Motor controls page with a GPIO pin map form and a slot rotation tester](docs/screenshots/motor-controls.png)
-
-Remap the GPIO pins without touching code, then use the slot picker to jog the turret and confirm
-each bottle lines up under the actuator.
-
----
-
-## 🛠️ Hardware Bill of Materials (core)
-| Qty | Item | Notes |
-| --- | --- | --- |
-| 1 | Raspberry Pi 4 (2 GB +) | Controls everything |
-| 1 | 24 V 5 A Mean Well LRS-120-24 | Shared PSU |
-| 1 | DM542T stepper driver | Micro-stepping friendly |
-| 1 | NEMA-17 42 mm stepper, 400 mN·m + | Turret rotation |
-| 1 | 12-slot aluminum turret + flange couplers | Houses bottles |
-| 1 | Linear actuator (0.5 ″ stroke, 24 V) | Pushes bottle valves |
-| 1 | Thrust bearing + MayTec 1.11.0408KT.89SP plate | Supports turret load |
-| … | Jumper wires, limit switch (home), misc. M3/M4 hardware | |
-
-*(Full BoM, coupler part #s, and mounting drawings live in `/docs`.)*
-
----
-
-## 💻 Software Prerequisites
-
-```bash
-sudo apt update
-sudo apt install python3 python3-venv git
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt   # Flask, requests, RPi.GPIO, etc.
+```
+v1/   original Flask application
+v2/   Flask rewrite, with pytest suite
+v3/   TypeScript application plus the C motion daemon
 ```
 
----
+Continuous integration runs per directory: `.github/workflows/ci-v2.yml` and
+`ci-v3.yml` only fire when their own version changes.
 
-## 🚀 Quick-start
+## License
 
-```bash
-# 1. Clone
-git clone https://github.com/cmc0619/barrobot.git
-cd barrobot
-
-# 2. Configure bottles (or use the web UI later)
-cp bottle_config.sample.json bottle_config.json
-nano bottle_config.json   # map each slot to an ingredient
-
-# 3. Run it
-python app.py             # dev mode
-# or enable the systemd service for auto-start
-sudo cp systemd-barrobot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now systemd-barrobot
-```
-
-Open `http://<pi-ip>:5000` to view the menu, settings, and debug pages.
-
----
-
-## ⚙️ Configuration Reference
-| File / Page | Purpose |
-| --- | --- |
-| `bottle_config.json` | Maps turret slots → ingredient names (case-insensitive) |
-| **Settings →** UI | Theme, default pour size, GPIO pins, motor params, “Safe Mode” |
-| `hardware.py` | Low-level stepper/actuator helper; tweak if you swap drivers |
-| `live_Recipes.json` | Auto-downloaded on startup then merged into `recipes.json` |
-
----
-
-## 🔄 Updates & Releases
-
-*Version file:* `version.txt` (3-digit thousandths)  
-The ZIP bundler bumps this automatically—so tag **0.004**, **0.005**, etc.
-
-The Flask app checks GitHub for newer tags on boot.  
-From the main page you can also hit **Update Now →**; after a successful pull it restarts the `systemd` service.
-
----
-
-## 🤝 Contributing
-
-Issues & PRs welcome! For major changes, open an issue first to discuss what you’d like to add or tweak.
-
----
-
-## 📜 License
-
-[MIT](LICENSE) © 2025 Cliff Campbell (cmc0619)  
-MIT – hack it, remix it, just don’t blame me if it pours you a triple.
-
+[MIT](LICENSE) © 2025–2026 Cliff Campbell
