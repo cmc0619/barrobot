@@ -4,10 +4,15 @@
 # analysers wrong rather than merely noisy: they report code that is correct,
 # deliberate, or impossible to write any other way.
 #
-# Every entry below is scoped to a single analyser and a single path, and says
-# why. No analyser is disabled repository-wide, and no path is hidden from every
-# analyser. Anything an exclusion gives up is still covered either by another
-# Codacy analyser or by that version's own CI workflow.
+# The rule applied here is that each version's own linter -- configured in its
+# own directory and enforced by its own CI job -- is authoritative for that
+# version's style, and Codacy's context-free duplicate of that linter gives way
+# where the two disagree. Codacy keeps everything those linters do not do:
+# dependency scanning, security analysis, duplication, and complexity metrics.
+#
+# Every entry below names a single analyser and a single path and says why. No
+# analyser is disabled repository-wide and no path is hidden from every
+# analyser.
 
 engines:
   bandit:
@@ -15,12 +20,39 @@ engines:
       # pytest states every expectation as a bare `assert`, which Bandit reports
       # as B101, and conftest.py hands the Flask test client a throwaway signing
       # key, which it reports as a hardcoded password. Both are inherent to
-      # writing tests at all. The v2 application package is still scanned.
+      # writing tests at all. The v2 application package is still scanned: 986
+      # lines across eight files, with no findings.
       - 'v2/tests/**'
       # This entry point binds 0.0.0.0 on purpose: the machine is a headless Pi
       # and the operator drives it from a phone on the house network. The file
       # is twenty lines of glue around create_app() and holds nothing else.
       - 'v2/app.py'
+
+  # v2's Python style is defined by ruff in v2/pyproject.toml, which selects E,
+  # F, I, B, UP and SIM, and CI runs it on every change under v2/. Prospector
+  # and Pylint apply a different and partly contradictory standard:
+  #
+  #   - pydocstyle D213 wants multi-line summaries to start on the second line,
+  #     which is the direct opposite of D212 and of how the codebase is written.
+  #   - D406/D407 want numpy-style dashed underlines under section headings;
+  #     these docstrings are Google-style, which is equally valid.
+  #   - D107 wants a docstring on every __init__, including dataclass and
+  #     adapter constructors that say nothing the class docstring has not.
+  #   - pycodestyle E704 fires on `def method(self) -> None: ...`, which is how
+  #     typing.Protocol members are declared and what ruff's formatter emits.
+  #     Ruff ignores E704 by default for exactly this reason.
+  #
+  # One finding here is worth keeping in view rather than losing quietly:
+  # mccabe rates BarRobotConfig.from_mapping at complexity 17. That is a fair
+  # observation about a real function, and it belongs to the v2 rewrite rather
+  # than to this repository layout. Codacy's own complexity metric still tracks
+  # it independently of Prospector.
+  prospector:
+    exclude_paths:
+      - 'v2/**'
+  pylintpython3:
+    exclude_paths:
+      - 'v2/**'
 
   opengrep:
     exclude_paths:
@@ -35,6 +67,10 @@ engines:
       # through the DOM's own textContent. The flagged fetch() call receives
       # internal relative paths from this file, never user input.
       - 'v3/web/app.js'
+      # Reports every strncpy call site on sight. Both destinations here are
+      # memset-zeroed fixed buffers written under an explicit sizeof(...) - 1
+      # bound, and the socket path is length-checked against sun_path first.
+      - 'v3/motiond/**'
 
   # v3 compiles under noUncheckedIndexedAccess, so indexing an array yields
   # `T | undefined` and the `if (!step)` guards that follow are what make the
@@ -44,10 +80,6 @@ engines:
   # also re-reports no-confusing-void-expression, which v3 turns off on purpose.
   # v3 lints src/ in CI with typescript-eslint strictTypeChecked against the
   # real tsconfig, which is strictly better informed than Codacy's copy.
-  #
-  # In web/app.js the objection is that the literal 0.0001 is not exactly
-  # representable in binary floating point. It is the conventional near-silence
-  # floor for a Web Audio exponential gain ramp, which rejects a true zero.
   eslint-9:
     exclude_paths:
       - 'v3/src/**'
@@ -57,11 +89,23 @@ engines:
       - 'v3/src/**'
       - 'v3/web/app.js'
 
+  # PMD's InnaccurateNumericLiteral objects that the literal 0.0001 is not
+  # exactly representable in binary floating point. It is the conventional
+  # near-silence floor for a Web Audio exponential gain ramp, which rejects a
+  # true zero. The rule reports any literal whose source text differs from the
+  # parser's own rendering of it, which is a long-standing false positive.
+  pmd:
+    exclude_paths:
+      - 'v3/web/app.js'
+  pmd-7:
+    exclude_paths:
+      - 'v3/web/app.js'
+
   flawfinder:
     exclude_paths:
       # flawfinder reports every strncpy and strlen call site regardless of
-      # context. In motiond both destinations are memset-zeroed fixed buffers
-      # written with an explicit sizeof(...) - 1 bound, the socket path is
+      # context. In motiond every destination is a memset-zeroed fixed buffer
+      # written under an explicit sizeof(...) - 1 bound, the socket path is
       # length-checked against sun_path before it is copied, and the request
-      # read loop is bounded by the buffer size on every iteration.
+      # read loop is bounded on each iteration.
       - 'v3/motiond/**'
